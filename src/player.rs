@@ -1,5 +1,6 @@
 use crate::{
     controller::PlayerAction,
+    game::STEP_SIZE,
     scene::{BlockColor, Clock, Scene},
 };
 use kiss3d::{
@@ -37,10 +38,10 @@ enum PlayerState {
 }
 
 pub struct Player {
-    state: PlayerState,
     pub scene_node: SceneNode3d,
+    pub color: PlayerColor,
+    state: PlayerState,
     model: GltfModel,
-    color: PlayerColor,
 }
 
 pub enum PlayerColor {
@@ -92,10 +93,10 @@ impl Player {
         if let PlayerState::Idle(idle) = &self.state {
             let from = idle.xz;
             let d = match action {
-                PlayerAction::Left => Vec2::X * 2.0,
-                PlayerAction::Right => -Vec2::X * 2.0,
-                PlayerAction::Up => Vec2::Y * 2.0,
-                PlayerAction::Down => -Vec2::Y * 2.0,
+                PlayerAction::Left => Vec2::X * STEP_SIZE,
+                PlayerAction::Right => -Vec2::X * STEP_SIZE,
+                PlayerAction::Up => Vec2::Y * STEP_SIZE,
+                PlayerAction::Down => -Vec2::Y * STEP_SIZE,
             };
 
             let jumping = Jumping {

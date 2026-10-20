@@ -1,4 +1,4 @@
-use crate::player::Player;
+use crate::{game::STEP_SIZE, player::Player};
 use kiss3d::{glamx::vec3, prelude::*};
 use rand::{RngExt, seq::IteratorRandom};
 use std::{path::Path, time::Instant};
@@ -37,6 +37,7 @@ fn create_block_mesh() -> kiss3d::procedural::RenderMesh {
     mesh
 }
 
+#[derive(PartialEq)]
 pub enum BlockColor {
     Neutral,
     Red,
@@ -55,8 +56,8 @@ impl std::fmt::Display for BlockColor {
 
 pub struct Block {
     pub cube: SceneNode3d,
-    points: usize,
-    color: BlockColor,
+    pub points: usize,
+    pub color: BlockColor,
 }
 
 impl Block {
@@ -153,7 +154,7 @@ impl Scene {
         });
 
         if max_z.is_some_and(|max_z| max_z - lava_z < 5.0) {
-            let new_z = max_z.unwrap() + 2.0;
+            let new_z = max_z.unwrap() + STEP_SIZE;
             let mut rng = rand::rng();
             let guaranteed_x = (-6..=6).step_by(2).choose(&mut rng).unwrap();
 

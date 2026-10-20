@@ -17,7 +17,8 @@ async fn main() {
     window.set_samples(NumSamples::One);
     //window.set_vsync(false);
 
-    let mut game = Game::default();
+    let ai = std::env::args().nth(1).is_some_and(|arg| arg == "ai");
+    let mut game = Game::new(ai);
     let mut state: Box<dyn GameState> = Box::new(StartState::default());
 
     while window
