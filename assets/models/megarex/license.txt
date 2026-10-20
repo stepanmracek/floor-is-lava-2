@@ -1,0 +1,8 @@
+Model Information:
+* title:	Robot Characters - Medium Megarex
+* source:	https://sketchfab.com/3d-models/robot-characters-medium-megarex-ea9673d18e4e48f4ac01c58bfb6a731b
+* author:	notfun (https://sketchfab.com/notfun)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works
