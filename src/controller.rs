@@ -120,7 +120,7 @@ impl Controller for SimpleAiController {
                 })?;
 
                 // Only consider blocks safely ahead of lava
-                if block.cube.position().z > lava_z + 0.5 {
+                if block.cube.position().z > lava_z + 0.1 {
                     Some(CandidateMove { action, block })
                 } else {
                     None
@@ -130,7 +130,7 @@ impl Controller for SimpleAiController {
 
         // 1. If near lava -> escape to the safest block (furthest ahead in Z)
         let distance_to_lava = my_z - lava_z;
-        if distance_to_lava < 2.5 {
+        if distance_to_lava < STEP_SIZE / 2.0 {
             return safe_moves
                 .iter()
                 .max_by_key(|m| (m.block.cube.position().z * 100.0) as i32)
