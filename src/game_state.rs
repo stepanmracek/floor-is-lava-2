@@ -1,18 +1,9 @@
-use crate::{
-    player::Player,
-    scene::{Clock, Scene},
-};
+use crate::{game::Game, player::Player, scene::Clock};
 use kiss3d::{glamx::vec2, prelude::*};
 use std::sync::Arc;
 
 pub trait GameState {
-    fn step(
-        &mut self,
-        window: &mut Window,
-        scene: &mut Scene,
-        red_player: &mut Player,
-        blue_player: &mut Player,
-    ) -> Option<Box<dyn GameState>>;
+    fn step(&mut self, window: &mut Window, game: &mut Game) -> Option<Box<dyn GameState>>;
 }
 
 pub struct StartState {
@@ -28,13 +19,7 @@ impl Default for StartState {
 }
 
 impl GameState for StartState {
-    fn step(
-        &mut self,
-        window: &mut Window,
-        _scene: &mut Scene,
-        _red_player: &mut Player,
-        _blue_player: &mut Player,
-    ) -> Option<Box<dyn GameState>> {
+    fn step(&mut self, window: &mut Window, _game: &mut Game) -> Option<Box<dyn GameState>> {
         let text = "Press space to start";
         let font_size = 40.0;
         let text_width = font_size * 0.5 * text.len() as f32;
@@ -74,13 +59,7 @@ impl Default for RunState {
 }
 
 impl GameState for RunState {
-    fn step(
-        &mut self,
-        window: &mut Window,
-        scene: &mut Scene,
-        red_player: &mut Player,
-        blue_player: &mut Player,
-    ) -> Option<Box<dyn GameState>> {
+    fn step(&mut self, window: &mut Window, game: &mut Game) -> Option<Box<dyn GameState>> {
         self.clock.tick();
         let current_fps = if self.clock.dt > 0.0 {
             1.0 / self.clock.dt
@@ -97,31 +76,44 @@ impl GameState for RunState {
         );
 
         window.draw_text(
-            &format!("{}", scene.red_score),
+            &format!("{}", game.scene.red_score),
             vec2(20.0, 20.0),
             30.0,
             &self.font,
             RED,
         );
         window.draw_text(
-            &format!("{}", scene.blue_score),
+            &format!("{}", game.scene.blue_score),
             vec2(window.width() as f32 - 60.0, 20.0),
             30.0,
             &self.font,
             BLUE,
         );
 
-        blue_player.control(window, &self.clock);
-        red_player.control(window, &self.clock);
+        if let Some(a) = game.blue_controller.get_action(
+            window,
+            &game.scene,
+            &game.blue_player,
+            &game.red_player,
+        ) {
+            game.blue_player.apply_action(a, &self.clock);
+        }
+        if let Some(a) =
+            game.red_controller
+                .get_action(window, &game.scene, &game.red_player, &game.blue_player)
+        {
+            game.red_player.apply_action(a, &self.clock);
+        }
 
-        let mut players: [&mut Player; 2] = [blue_player, red_player];
+        let mut players: [&mut Player; 2] = [&mut game.blue_player, &mut game.red_player];
         if rand::random::<bool>() {
             players.swap(0, 1);
         }
         for player in players {
-            player.update(&self.clock, scene);
+            player.update(&self.clock, &mut game.scene);
         }
-        scene.update(&self.clock, &[red_player, blue_player]);
+        game.scene
+            .update(&self.clock, &[&game.red_player, &game.blue_player]);
 
         None
     }

@@ -1,12 +1,14 @@
+mod controller;
+mod game;
 mod game_state;
 mod player;
 mod scene;
 
+use crate::{
+    game::Game,
+    game_state::{GameState, StartState},
+};
 use kiss3d::prelude::*;
-use player::{Player, PlayerColor};
-use scene::Scene;
-
-use crate::game_state::{GameState, StartState};
 
 #[kiss3d::main]
 async fn main() {
@@ -15,15 +17,14 @@ async fn main() {
     window.set_samples(NumSamples::One);
     //window.set_vsync(false);
 
-    let mut scene = Scene::new();
-    let mut blue_player = Player::new(&mut scene.world, PlayerColor::Blue);
-    let mut red_player = Player::new(&mut scene.world, PlayerColor::Red);
+    let mut game = Game::default();
     let mut state: Box<dyn GameState> = Box::new(StartState::default());
 
-    while window.render_3d(&mut scene.world, &mut scene.camera).await {
-        if let Some(new_state) =
-            state.step(&mut window, &mut scene, &mut red_player, &mut blue_player)
-        {
+    while window
+        .render_3d(&mut game.scene.world, &mut game.scene.camera)
+        .await
+    {
+        if let Some(new_state) = state.step(&mut window, &mut game) {
             state = new_state;
         }
     }

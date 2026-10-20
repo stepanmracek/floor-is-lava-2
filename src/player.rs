@@ -1,4 +1,7 @@
-use crate::scene::{BlockColor, Clock, Scene};
+use crate::{
+    controller::PlayerAction,
+    scene::{BlockColor, Clock, Scene},
+};
 use kiss3d::{
     glamx::{vec2, vec3},
     prelude::*,
@@ -6,14 +9,12 @@ use kiss3d::{
 use rand::seq::IteratorRandom;
 use std::{f32::consts::PI, path::Path};
 
-#[derive(Debug, PartialEq)]
 struct Jumping {
     start_time: f32,
     from: Vec2,
     to: Vec2,
 }
 
-#[derive(Debug, PartialEq)]
 struct Idle {
     xz: Vec2,
 }
@@ -24,12 +25,10 @@ impl Idle {
     }
 }
 
-#[derive(Debug, PartialEq)]
 struct Dying {
     start_time: f32,
 }
 
-#[derive(Debug, PartialEq)]
 enum PlayerState {
     Idle(Idle),
     Jumping(Jumping),
@@ -89,24 +88,14 @@ impl Player {
         player
     }
 
-    pub fn control(&mut self, window: &Window, clock: &Clock) {
+    pub fn apply_action(&mut self, action: PlayerAction, clock: &Clock) {
         if let PlayerState::Idle(idle) = &self.state {
             let from = idle.xz;
-            let (left_key, right_key, up_key, down_key) = match self.color {
-                PlayerColor::Red => (Key::A, Key::D, Key::W, Key::S),
-                PlayerColor::Blue => (Key::Left, Key::Right, Key::Up, Key::Down),
-            };
-
-            let d = if window.get_key(left_key) == Action::Press {
-                Vec2::X * 2.0
-            } else if window.get_key(right_key) == Action::Press {
-                -Vec2::X * 2.0
-            } else if window.get_key(up_key) == Action::Press {
-                Vec2::Y * 2.0
-            } else if window.get_key(down_key) == Action::Press {
-                -Vec2::Y * 2.0
-            } else {
-                return;
+            let d = match action {
+                PlayerAction::Left => Vec2::X * 2.0,
+                PlayerAction::Right => -Vec2::X * 2.0,
+                PlayerAction::Up => Vec2::Y * 2.0,
+                PlayerAction::Down => -Vec2::Y * 2.0,
             };
 
             let jumping = Jumping {
