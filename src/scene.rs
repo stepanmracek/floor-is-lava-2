@@ -1,4 +1,7 @@
-use crate::{game::STEP_SIZE, player::Player};
+use crate::{
+    game::STEP_SIZE,
+    player::{Player, PlayerColor},
+};
 use kiss3d::{glamx::vec3, prelude::*};
 use rand::{RngExt, seq::IteratorRandom};
 use std::{path::Path, time::Instant};
@@ -37,7 +40,7 @@ fn create_block_mesh() -> kiss3d::procedural::RenderMesh {
     mesh
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum BlockColor {
     Neutral,
     Red,
@@ -68,14 +71,32 @@ impl Block {
     }
 }
 
+#[derive(Clone)]
+pub struct BlockInfo {
+    pub color: BlockColor,
+    pub points: usize,
+    pub above_lava: f32,
+    pub red_player: bool,
+    pub blue_player: bool,
+}
+
+impl BlockInfo {
+    pub fn has_player(&self, color: PlayerColor) -> bool {
+        match color {
+            PlayerColor::Blue => self.blue_player,
+            PlayerColor::Red => self.red_player,
+        }
+    }
+}
+
 pub struct Scene {
     pub world: SceneNode3d,
-    light: SceneNode3d,
     pub lava: SceneNode3d,
     pub camera: OrbitCamera3d,
-    pub blocks: Vec<Block>,
     pub red_score: usize,
     pub blue_score: usize,
+    blocks: Vec<Block>,
+    light: SceneNode3d,
 }
 
 impl Scene {
@@ -188,6 +209,62 @@ impl Scene {
             color: BlockColor::Neutral,
         };
         blocks.push(block);
+    }
+
+    pub fn blocks(&self) -> &[Block] {
+        &self.blocks
+    }
+
+    pub fn blocks_matrix(
+        &self,
+        blue_player: &Player,
+        red_player: &Player,
+    ) -> Vec<Vec<Option<BlockInfo>>> {
+        if self.blocks.is_empty() {
+            return Vec::new();
+        }
+
+        let mut min_z = f32::INFINITY;
+        let mut max_z = f32::NEG_INFINITY;
+        let mut min_x = -6.0f32;
+        let mut max_x = 6.0f32;
+
+        for block in &self.blocks {
+            let pos = block.cube.position();
+            min_z = min_z.min(pos.z);
+            max_z = max_z.max(pos.z);
+            min_x = min_x.min(pos.x);
+            max_x = max_x.max(pos.x);
+        }
+
+        let num_rows = ((max_z - min_z) / STEP_SIZE).round() as usize + 1;
+        let num_cols = ((max_x - min_x) / STEP_SIZE).round() as usize + 1;
+        let mut matrix = vec![vec![None; num_cols]; num_rows];
+
+        let lava_level = self.lava.position().z;
+
+        for block in &self.blocks {
+            let pos = block.cube.position();
+            let row = ((pos.z - min_z) / STEP_SIZE).round() as usize;
+            let col = ((pos.x - min_x) / STEP_SIZE).round() as usize;
+            if row < num_rows && col < num_cols {
+                let is_player_on = |p: &Player| {
+                    p.standing_xz().is_some_and(|player_xz| {
+                        (pos.x - player_xz.x).abs() <= 0.05 && (pos.z - player_xz.y).abs() <= 0.05
+                    })
+                };
+
+                matrix[row][col] = Some(BlockInfo {
+                    color: block.color,
+                    points: block.points,
+                    above_lava: pos.z - lava_level,
+                    blue_player: is_player_on(blue_player),
+                    red_player: is_player_on(red_player),
+                });
+            }
+        }
+
+        matrix
     }
 }
 

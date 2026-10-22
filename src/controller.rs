@@ -1,7 +1,7 @@
 use crate::{
     game::STEP_SIZE,
     player::{Player, PlayerColor},
-    scene::{Block, BlockColor, Scene},
+    scene::{BlockColor, BlockInfo, Scene},
 };
 use kiss3d::prelude::*;
 use rand::seq::IteratorRandom;
@@ -75,9 +75,9 @@ impl Controller for KeyboardController {
 
 pub struct SimpleAiController;
 
-struct CandidateMove<'a> {
+struct CandidateMove {
     action: PlayerAction,
-    block: &'a Block,
+    block: BlockInfo,
 }
 
 impl Controller for SimpleAiController {
@@ -88,39 +88,47 @@ impl Controller for SimpleAiController {
         this_player: &Player,
         other_player: &Player,
     ) -> Option<PlayerAction> {
-        let my_pos = this_player.scene_node.position();
-        let my_x = (my_pos.x / STEP_SIZE).round() * STEP_SIZE;
-        let my_z = (my_pos.z / STEP_SIZE).round() * STEP_SIZE;
+        let matrix = match this_player.color {
+            PlayerColor::Red => scene.blocks_matrix(other_player, this_player),
+            PlayerColor::Blue => scene.blocks_matrix(this_player, other_player),
+        };
 
-        let lava_z = scene.lava.position().z;
+        // 1. Locate current position
+        let (my_row, my_col, my_block) = matrix.iter().enumerate().find_map(|(r, row)| {
+            row.iter().enumerate().find_map(|(c, cell)| {
+                let block = cell.as_ref()?;
+                if block.has_player(this_player.color) {
+                    Some((r as isize, c as isize, block))
+                } else {
+                    None
+                }
+            })
+        })?;
+
         let opponent_block_color = match other_player.color {
             PlayerColor::Red => BlockColor::Red,
             PlayerColor::Blue => BlockColor::Blue,
         };
 
-        // 4 possible jump offsets (dx, dz) matching Player::apply_action:
-        // Left: +X, Right: -X, Up: +Z, Down: -Z
-        const DIRECTIONS: [(PlayerAction, f32, f32); 4] = [
-            (PlayerAction::Up, 0.0, STEP_SIZE),
-            (PlayerAction::Left, STEP_SIZE, 0.0),
-            (PlayerAction::Right, -STEP_SIZE, 0.0),
-            (PlayerAction::Down, 0.0, -STEP_SIZE),
+        // 4 grid steps (d_row, d_col) matching Player::apply_action:
+        // Up: +Z (row + 1), Left: +X (col + 1), Right: -X (col - 1), Down: -Z (row - 1)
+        const DIRECTIONS: [(PlayerAction, isize, isize); 4] = [
+            (PlayerAction::Up, 1, 0),
+            (PlayerAction::Left, 0, 1),
+            (PlayerAction::Right, 0, -1),
+            (PlayerAction::Down, -1, 0),
         ];
 
-        // all adjacent blocks that exist and are safely above lava
+        // Check each adjacent tile in the matrix
         let safe_moves: Vec<CandidateMove> = DIRECTIONS
             .iter()
-            .filter_map(|&(action, dx, dz)| {
-                let target_x = my_x + dx;
-                let target_z = my_z + dz;
+            .filter_map(|&(action, d_row, d_col)| {
+                let target_row = usize::try_from(my_row + d_row).ok()?;
+                let target_col = usize::try_from(my_col + d_col).ok()?;
 
-                let block = scene.blocks.iter().find(|b| {
-                    let pos = b.cube.position();
-                    (pos.x - target_x).abs() < 0.1 && (pos.z - target_z).abs() < 0.1
-                })?;
+                let block = matrix.get(target_row)?.get(target_col)?.clone()?;
 
-                // Only consider blocks safely ahead of lava
-                if block.cube.position().z > lava_z + 0.1 {
+                if block.above_lava > 0.1 {
                     Some(CandidateMove { action, block })
                 } else {
                     None
@@ -128,12 +136,11 @@ impl Controller for SimpleAiController {
             })
             .collect();
 
-        // 1. If near lava -> escape to the safest block (furthest ahead in Z)
-        let distance_to_lava = my_z - lava_z;
-        if distance_to_lava < STEP_SIZE / 2.0 {
+        // 1. If near lava -> escape to the safest block (furthest ahead of lava)
+        if my_block.above_lava < STEP_SIZE / 2.0 {
             return safe_moves
                 .iter()
-                .max_by_key(|m| (m.block.cube.position().z * 100.0) as i32)
+                .max_by(|a, b| a.block.above_lava.total_cmp(&b.block.above_lava))
                 .map(|m| m.action);
         }
 

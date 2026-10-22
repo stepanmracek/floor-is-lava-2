@@ -15,7 +15,7 @@ async fn main() {
     let mut window = Window::new("Floor is lava!").await;
     window.set_shadows_enabled(false);
     window.set_samples(NumSamples::One);
-    //window.set_vsync(false);
+    window.set_vsync(false);
 
     let ai = std::env::args().nth(1).is_some_and(|arg| arg == "ai");
     let mut game = Game::new(ai);

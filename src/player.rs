@@ -44,6 +44,7 @@ pub struct Player {
     model: GltfModel,
 }
 
+#[derive(Clone, PartialEq, Copy)]
 pub enum PlayerColor {
     Red,
     Blue,
@@ -175,7 +176,7 @@ impl Player {
 
         // Find some block that is safely above the lava (e.g. at least 1.0 unit above)
         if let Some(block) = scene
-            .blocks
+            .blocks()
             .iter()
             .filter(|b| b.cube.position().y > lava_y + 1.0)
             .choose(&mut rng)
@@ -192,6 +193,14 @@ impl Player {
 
             // Reset state
             self.state = PlayerState::Idle(Idle::new(vec2(bpos.x, bpos.z)));
+        }
+    }
+
+    pub fn standing_xz(&self) -> Option<Vec2> {
+        match &self.state {
+            PlayerState::Idle(idle) => Some(idle.xz),
+            PlayerState::Jumping(jumping) => Some(jumping.from),
+            _ => None,
         }
     }
 }
