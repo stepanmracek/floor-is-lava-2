@@ -51,7 +51,7 @@ pub struct RunState {
 impl Default for RunState {
     fn default() -> Self {
         Self {
-            clock: Clock::default(),
+            clock: Clock::realtime(),
             font: Font::default(),
             fps: 0.0,
         }
@@ -91,17 +91,19 @@ impl GameState for RunState {
         );
 
         if let Some(a) = game.blue_controller.get_action(
-            window,
+            Some(window),
             &game.scene,
             &game.blue_player,
             &game.red_player,
         ) {
             game.blue_player.apply_action(a, &self.clock);
         }
-        if let Some(a) =
-            game.red_controller
-                .get_action(window, &game.scene, &game.red_player, &game.blue_player)
-        {
+        if let Some(a) = game.red_controller.get_action(
+            Some(window),
+            &game.scene,
+            &game.red_player,
+            &game.blue_player,
+        ) {
             game.red_player.apply_action(a, &self.clock);
         }
 

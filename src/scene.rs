@@ -58,17 +58,25 @@ impl std::fmt::Display for BlockColor {
 }
 
 pub struct Block {
-    pub cube: SceneNode3d,
+    pub position: Vec3,
     pub points: usize,
     pub color: BlockColor,
+    cube: Option<SceneNode3d>,
 }
 
 impl Block {
     pub fn set_color(&mut self, color: BlockColor) {
         self.color = color;
         let texture_name = format!("block-{}-{}", self.points, self.color);
-        self.cube.set_texture_with_name(&texture_name);
+        if let Some(cube) = &mut self.cube {
+            cube.set_texture_with_name(&texture_name);
+        }
     }
+}
+
+pub struct Lava {
+    pub position: Vec3,
+    pub node: Option<SceneNode3d>,
 }
 
 #[derive(Clone)]
@@ -90,17 +98,43 @@ impl BlockInfo {
 }
 
 pub struct Scene {
-    pub world: SceneNode3d,
-    pub lava: SceneNode3d,
-    pub camera: OrbitCamera3d,
+    pub world: Option<SceneNode3d>,
+    pub lava: Lava,
+    pub camera: Option<OrbitCamera3d>,
     pub red_score: usize,
     pub blue_score: usize,
     blocks: Vec<Block>,
-    light: SceneNode3d,
+    light: Option<SceneNode3d>,
 }
 
 impl Scene {
-    pub fn new() -> Self {
+    pub fn headless() -> Self {
+        let lava_pos = vec3(0.0, -5.0, -5.0);
+        let mut blocks = vec![];
+        let z = 0.0;
+        for x in (-6..=6).step_by(2) {
+            Scene::spawn_block(None, &mut blocks, x as f32, z);
+        }
+
+        let lava = Lava {
+            position: lava_pos,
+            node: None,
+        };
+
+        Self {
+            world: None,
+            light: None,
+            lava,
+            camera: None,
+            blocks,
+            red_score: 0,
+            blue_score: 0,
+        }
+    }
+
+    pub fn headed() -> Self {
+        let lava_pos = vec3(0.0, -5.0, -5.0);
+
         MeshManager3d::get_global_manager(|mesh_mngr| {
             if mesh_mngr.get("block_cube").is_none() {
                 mesh_mngr.add_render_mesh(create_block_mesh(), false, "block_cube");
@@ -125,20 +159,25 @@ impl Scene {
         let mut blocks = vec![];
         let z = 0.0;
         for x in (-6..=6).step_by(2) {
-            Scene::spawn_block(&mut world, &mut blocks, x as f32, z);
+            Scene::spawn_block(Some(&mut world), &mut blocks, x as f32, z);
         }
 
-        let lava = world
+        let lava_node = world
             .add_cylinder_with_subdiv(12.0, 0.1, 32)
-            .set_position(vec3(0.0, -5.0, -5.0))
+            .set_position(lava_pos)
             //.set_texture_from_file(Path::new("assets/textures/lava.png"), "lava")
             .set_color(DARK_RED.with_alpha(0.5));
 
+        let lava = Lava {
+            position: lava_pos,
+            node: Some(lava_node),
+        };
+
         Self {
-            world,
-            light,
+            world: Some(world),
+            light: Some(light),
             lava,
-            camera: camera(),
+            camera: Some(camera()),
             blocks,
             red_score: 0,
             blue_score: 0,
@@ -147,19 +186,28 @@ impl Scene {
 
     pub fn update(&mut self, clock: &Clock, players: &[&Player]) {
         let d = vec3(0.0, 1.0, 1.0) * (LAVA_SPEED * clock.dt);
-        self.lava.set_position(self.lava.position() + d);
-        self.light.set_position(self.light.position() + d);
+        self.lava.position += d;
+        if let Some(node) = &mut self.lava.node {
+            node.set_position(self.lava.position);
+        }
+        if let Some(light) = &mut self.light {
+            light.set_position(light.position() + d);
+        }
 
-        let player_pos: Vec3 = players.iter().map(|p| p.scene_node.position()).sum();
-        let camera_at = self.camera.at().lerp(player_pos / 2.0, clock.dt);
-        self.camera.look_at(self.camera.eye() + d, camera_at);
+        let player_pos: Vec3 = players.iter().map(|p| p.position).sum();
+        if let Some(camera) = &mut self.camera {
+            let camera_at = camera.at().lerp(player_pos / 2.0, clock.dt);
+            camera.look_at(camera.eye() + d, camera_at);
+        }
 
-        let lava_z = self.lava.position().z;
+        let lava_z = self.lava.position.z;
         let mut max_z: Option<f32> = None;
         self.blocks.retain_mut(|block| {
-            let pos = block.cube.position();
+            let pos = block.position;
             if pos.z < lava_z {
-                block.cube.remove();
+                if let Some(cube) = &mut block.cube {
+                    cube.remove();
+                }
                 match block.color {
                     BlockColor::Blue => self.blue_score += block.points,
                     BlockColor::Red => self.red_score += block.points,
@@ -181,7 +229,7 @@ impl Scene {
 
             for x in (-6..=6).step_by(2) {
                 if x == guaranteed_x || rng.random::<f32>() < 0.7 {
-                    Scene::spawn_block(&mut self.world, &mut self.blocks, x as f32, new_z);
+                    Scene::spawn_block(self.world.as_mut(), &mut self.blocks, x as f32, new_z);
                 }
             }
         }
@@ -189,21 +237,24 @@ impl Scene {
 
     pub fn is_standing_on_block(&mut self, target_xz: Vec2) -> Option<&mut Block> {
         self.blocks.iter_mut().find(|block| {
-            let pos = block.cube.position();
+            let pos = block.position;
             (pos.x - target_xz.x).abs() <= 0.05 && (pos.z - target_xz.y).abs() <= 0.05
         })
     }
 
-    fn spawn_block(world: &mut SceneNode3d, blocks: &mut Vec<Block>, x: f32, z: f32) {
+    fn spawn_block(world: Option<&mut SceneNode3d>, blocks: &mut Vec<Block>, x: f32, z: f32) {
         let points = rand::rng().random_range(1..=9);
-        let texture_name = format!("block-{points}-gray");
-        let cube = world
-            .add_geom_with_name("block_cube", Vec3::splat(1.5))
-            .expect("block_cube mesh not registered")
-            .set_position(vec3(x, z - 0.75, z))
-            .set_texture_with_name(&texture_name);
+        let position = vec3(x, z - 0.75, z);
+        let cube = world.map(|w| {
+            let texture_name = format!("block-{points}-gray");
+            w.add_geom_with_name("block_cube", Vec3::splat(1.5))
+                .expect("block_cube mesh not registered")
+                .set_position(position)
+                .set_texture_with_name(&texture_name)
+        });
 
         let block = Block {
+            position,
             cube,
             points,
             color: BlockColor::Neutral,
@@ -230,7 +281,7 @@ impl Scene {
         let mut max_x = 6.0f32;
 
         for block in &self.blocks {
-            let pos = block.cube.position();
+            let pos = block.position;
             min_z = min_z.min(pos.z);
             max_z = max_z.max(pos.z);
             min_x = min_x.min(pos.x);
@@ -241,10 +292,10 @@ impl Scene {
         let num_cols = ((max_x - min_x) / STEP_SIZE).round() as usize + 1;
         let mut matrix = vec![vec![None; num_cols]; num_rows];
 
-        let lava_level = self.lava.position().z;
+        let lava_level = self.lava.position.z;
 
         for block in &self.blocks {
-            let pos = block.cube.position();
+            let pos = block.position;
             let row = ((pos.z - min_z) / STEP_SIZE).round() as usize;
             let col = ((pos.x - min_x) / STEP_SIZE).round() as usize;
             if row < num_rows && col < num_cols {
@@ -268,30 +319,50 @@ impl Scene {
     }
 }
 
+pub enum ClockMode {
+    Realtime { start: Instant, last_time: Instant },
+    Fixed { dt: f32 },
+}
+
 pub struct Clock {
-    start: Instant,
-    last_time: Instant,
+    mode: ClockMode,
     pub dt: f32,
     pub game_time: f32,
 }
 
-impl Default for Clock {
-    fn default() -> Self {
+impl Clock {
+    pub fn realtime() -> Self {
         let now = Instant::now();
-        Clock {
-            start: now,
-            last_time: now,
+        Self {
+            mode: ClockMode::Realtime {
+                start: now,
+                last_time: now,
+            },
             dt: 0.0,
             game_time: 0.0,
         }
     }
-}
 
-impl Clock {
+    pub fn fixed(dt: f32) -> Self {
+        Self {
+            mode: ClockMode::Fixed { dt },
+            dt,
+            game_time: 0.0,
+        }
+    }
+
     pub fn tick(&mut self) {
-        let now = Instant::now();
-        self.game_time = now.duration_since(self.start).as_secs_f32();
-        self.dt = now.duration_since(self.last_time).as_secs_f32().min(0.05);
-        self.last_time = now;
+        match &mut self.mode {
+            ClockMode::Realtime { start, last_time } => {
+                let now = Instant::now();
+                self.game_time = now.duration_since(*start).as_secs_f32();
+                self.dt = now.duration_since(*last_time).as_secs_f32().min(0.05);
+                *last_time = now;
+            }
+            ClockMode::Fixed { dt } => {
+                self.dt = *dt;
+                self.game_time += *dt;
+            }
+        }
     }
 }

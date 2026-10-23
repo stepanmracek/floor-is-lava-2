@@ -17,7 +17,7 @@ pub enum PlayerAction {
 pub trait Controller {
     fn get_action(
         &mut self,
-        window: &Window,
+        window: Option<&Window>,
         scene: &Scene,
         this_player: &Player,
         other_player: &Player,
@@ -54,11 +54,12 @@ impl KeyboardController {
 impl Controller for KeyboardController {
     fn get_action(
         &mut self,
-        window: &Window,
+        window: Option<&Window>,
         _scene: &Scene,
         _this_player: &Player,
         _other_player: &Player,
     ) -> Option<PlayerAction> {
+        let window = window?;
         if window.get_key(self.left) == Action::Press {
             Some(PlayerAction::Left)
         } else if window.get_key(self.right) == Action::Press {
@@ -83,7 +84,7 @@ struct CandidateMove {
 impl Controller for SimpleAiController {
     fn get_action(
         &mut self,
-        _window: &Window,
+        _window: Option<&Window>,
         scene: &Scene,
         this_player: &Player,
         other_player: &Player,
