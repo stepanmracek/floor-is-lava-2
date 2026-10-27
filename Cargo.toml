@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = [
+    "floor-is-lava-3d",
+    "floor-is-lava-lib",
+]
+
+[workspace.dependencies]
+glam = "0.33"
