@@ -1,12 +1,20 @@
-use std::time::Instant;
-
 use glam::{IVec2, ivec2};
-use rand::{RngExt, seq::IteratorRandom};
+use rand::{RngExt, SeedableRng, rngs::StdRng, seq::IteratorRandom};
+use std::time::Instant;
 
 const LAVA_SPEED: f32 = 1.0 / 4.0;
 const JUMP_DURATION: f32 = 1.0;
 const DYING_DURATION: f32 = 1.0;
-const FALLING_SPEED: f32 = 9.8;
+const FALLING_SPEED: f32 = 8.0;
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BlockId(usize);
+
+impl BlockId {
+    fn next(self) -> Self {
+        BlockId(self.0 + 1)
+    }
+}
 
 pub enum BlockColor {
     Neutral,
@@ -25,21 +33,28 @@ impl std::fmt::Display for BlockColor {
 }
 
 pub struct Block {
-    pub id: usize,
+    pub id: BlockId,
     pub position: IVec2,
     pub points: usize,
     pub color: BlockColor,
 }
 
+#[derive(Clone, Copy)]
 pub enum PlayerColor {
     Red,
     Blue,
 }
 
 pub struct Jumping {
+    pub from: IVec2,
+    pub to: IVec2,
     start_time: f32,
-    from: IVec2,
-    to: IVec2,
+}
+
+impl Jumping {
+    pub fn progress(&self, game_time: f32) -> f32 {
+        ((game_time - self.start_time) / JUMP_DURATION).clamp(0.0, 1.0)
+    }
 }
 
 pub struct Idle {
@@ -47,14 +62,14 @@ pub struct Idle {
 }
 
 pub struct Falling {
-    started_falling_at: IVec2,
-    vertical_pos: f32,
+    pub started_falling_at: IVec2,
+    pub vertical_pos: f32,
 }
 
 pub struct Dying {
-    started_falling_at: IVec2,
-    vertical_pos: f32,
-    start_time: f32,
+    pub started_falling_at: IVec2,
+    pub vertical_pos: f32,
+    pub start_time: f32,
 }
 
 pub enum PlayerState {
@@ -93,6 +108,8 @@ pub struct Game {
     pub lava_height: f32,
     pub red_player: Player,
     pub blue_player: Player,
+    next_block_id: BlockId,
+    rng: StdRng,
 }
 
 pub enum ClockMode {
@@ -143,20 +160,24 @@ impl Clock {
     }
 }
 
-pub struct StepOutcome {
-    pub new_block_ids: Vec<usize>,
-    pub removed_block_ids: Vec<usize>,
+pub enum GameEvent {
+    BlockSpawned(BlockId),
+    BlockRemoved(BlockId),
+    BlockColored(BlockId),
 }
 
 impl Game {
     pub fn new() -> Self {
-        let mut blocks = vec![];
-        for (id, x) in (-3..=3).enumerate() {
-            Game::spawn_block(id, &mut blocks, ivec2(x, 0));
-        }
+        Self::with_rng(StdRng::from_rng(&mut rand::rng()))
+    }
 
-        Self {
-            blocks,
+    pub fn with_seed(seed: u64) -> Self {
+        Self::with_rng(StdRng::seed_from_u64(seed))
+    }
+
+    fn with_rng(rng: StdRng) -> Self {
+        let mut game = Self {
+            blocks: vec![],
             lava_height: -2.0,
             blue_player: Player {
                 score: 0,
@@ -172,22 +193,39 @@ impl Game {
                     position: ivec2(-2, 0),
                 }),
             },
+            next_block_id: BlockId(0),
+            rng,
+        };
+
+        for x in -3..=3 {
+            game.spawn_block(ivec2(x, 0));
         }
+
+        game
     }
 
-    pub fn spawn_block(id: usize, blocks: &mut Vec<Block>, position: IVec2) {
-        let points = rand::rng().random_range(1..=9);
-        let block = Block {
+    pub fn spawn_block(&mut self, position: IVec2) -> BlockId {
+        let id = self.next_block_id;
+        self.next_block_id = id.next();
+        let points = self.rng.random_range(1..=9);
+        self.blocks.push(Block {
             id,
             position,
             points,
             color: BlockColor::Neutral,
-        };
-        blocks.push(block);
+        });
+        id
     }
 
     pub fn is_standing_on_block(blocks: &mut [Block], player_pos: IVec2) -> Option<&mut Block> {
         blocks.iter_mut().find(|block| block.position == player_pos)
+    }
+
+    pub fn block(&self, id: BlockId) -> Option<&Block> {
+        self.blocks
+            .binary_search_by_key(&id, |block| block.id)
+            .ok()
+            .map(|index| &self.blocks[index])
     }
 
     pub fn step(
@@ -195,31 +233,32 @@ impl Game {
         clock: &Clock,
         red_action: Option<PlayerAction>,
         blue_action: Option<PlayerAction>,
-    ) -> StepOutcome {
-        if let PlayerState::Idle(idle) = &self.red_player.state {
-            if let Some(red_action) = red_action {
-                self.red_player.state = PlayerState::Jumping(Jumping {
-                    start_time: clock.game_time,
-                    from: idle.position,
-                    to: idle.position + red_action.to_direction(),
-                })
-            }
+    ) -> Vec<GameEvent> {
+        let mut events = vec![];
+
+        if let PlayerState::Idle(idle) = &self.red_player.state
+            && let Some(red_action) = red_action
+        {
+            self.red_player.state = PlayerState::Jumping(Jumping {
+                start_time: clock.game_time,
+                from: idle.position,
+                to: idle.position + red_action.to_direction(),
+            })
         }
-        if let PlayerState::Idle(idle) = &self.blue_player.state {
-            if let Some(blue_action) = blue_action {
-                self.blue_player.state = PlayerState::Jumping(Jumping {
-                    start_time: clock.game_time,
-                    from: idle.position,
-                    to: idle.position + blue_action.to_direction(),
-                })
-            }
+
+        if let PlayerState::Idle(idle) = &self.blue_player.state
+            && let Some(blue_action) = blue_action
+        {
+            self.blue_player.state = PlayerState::Jumping(Jumping {
+                start_time: clock.game_time,
+                from: idle.position,
+                to: idle.position + blue_action.to_direction(),
+            })
         }
 
         self.lava_height += clock.dt * LAVA_SPEED;
 
         let mut max_height = 0;
-        let max_id = self.blocks.last().unwrap().id;
-        let mut removed_block_ids = vec![];
         self.blocks.retain(|block| {
             let block_height = block.position.y;
             if (block_height as f32) < self.lava_height {
@@ -228,7 +267,7 @@ impl Game {
                     BlockColor::Blue => self.blue_player.score += block.points,
                     _ => {}
                 }
-                removed_block_ids.push(block.id);
+                events.push(GameEvent::BlockRemoved(block.id));
                 false
             } else {
                 if block_height > max_height {
@@ -238,22 +277,19 @@ impl Game {
             }
         });
 
-        let mut new_block_ids = vec![];
         if (max_height as f32) - self.lava_height < 3.0 {
             let y = max_height + 1;
-            let mut rng = rand::rng();
-            let guaranteed_x = (-3..=3).choose(&mut rng).unwrap();
-            for (id, x) in (-3..=3).enumerate() {
-                if x == guaranteed_x || rng.random::<f32>() < 0.7 {
-                    let new_block_id = id + 1 + max_id;
-                    Game::spawn_block(new_block_id, &mut self.blocks, ivec2(x, y));
-                    new_block_ids.push(new_block_id);
+            let guaranteed_x = (-3..=3).choose(&mut self.rng).unwrap();
+            for x in -3..=3 {
+                if x == guaranteed_x || self.rng.random::<f32>() < 0.7 {
+                    let new_block_id = self.spawn_block(ivec2(x, y));
+                    events.push(GameEvent::BlockSpawned(new_block_id));
                 }
             }
         }
 
         let mut players: [&mut Player; 2] = [&mut self.blue_player, &mut self.red_player];
-        if rand::random::<bool>() {
+        if self.rng.random::<bool>() {
             players.swap(0, 1);
         }
         for player in players {
@@ -279,6 +315,7 @@ impl Game {
                                 PlayerColor::Red => BlockColor::Red,
                                 PlayerColor::Blue => BlockColor::Blue,
                             };
+                            events.push(GameEvent::BlockColored(landing_block.id));
                             player.state = PlayerState::Idle(Idle {
                                 position: jumping.to,
                             })
@@ -305,12 +342,11 @@ impl Game {
                 PlayerState::Dying(dying) => {
                     if clock.game_time - dying.start_time > DYING_DURATION {
                         // find some safe block above to respawn
-                        let mut rng = rand::rng();
                         if let Some(block) = self
                             .blocks
                             .iter()
                             .filter(|b| (b.position.y as f32) > (self.lava_height + 1.0))
-                            .choose(&mut rng)
+                            .choose(&mut self.rng)
                         {
                             player.state = PlayerState::Idle(Idle {
                                 position: block.position,
@@ -321,9 +357,12 @@ impl Game {
             }
         }
 
-        StepOutcome {
-            new_block_ids,
-            removed_block_ids,
-        }
+        events
+    }
+}
+
+impl Default for Game {
+    fn default() -> Self {
+        Self::new()
     }
 }
