@@ -4,7 +4,7 @@ use std::time::Instant;
 
 const LAVA_SPEED: f32 = 1.0 / 4.0;
 const JUMP_DURATION: f32 = 1.0;
-const DYING_DURATION: f32 = 1.0;
+const DYING_DURATION: f32 = 3.0;
 const FALLING_SPEED: f32 = 8.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -69,7 +69,13 @@ pub struct Falling {
 pub struct Dying {
     pub started_falling_at: IVec2,
     pub vertical_pos: f32,
-    pub start_time: f32,
+    start_time: f32,
+}
+
+impl Dying {
+    pub fn progress(&self, game_time: f32) -> f32 {
+        ((game_time - self.start_time) / DYING_DURATION).clamp(0.0, 1.0)
+    }
 }
 
 pub enum PlayerState {

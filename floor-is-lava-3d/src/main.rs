@@ -12,6 +12,7 @@ use crate::controller::{Controller, KeyboardController};
 const CAMERA_OFFSET: Vec3 = vec3(0.0, 3.0, 7.0);
 const LIGHT_OFFSET: Vec3 = vec3(5.0, 7.0, 10.0);
 const JUMP_CLIP_DURATION: f32 = 1.0;
+const DYING_CLIP_DURATION: f32 = 2.0;
 
 fn camera(game: &Game) -> OrbitCamera3d {
     let mut camera = OrbitCamera3d::new(y_to_3d(game.lava_height) + CAMERA_OFFSET, Vec3::ZERO);
@@ -108,12 +109,20 @@ impl PlayerView {
         }
         self.node.set_position(PlayerView::position(player, clock));
 
-        if let PlayerState::Jumping(jumping) = &player.state {
-            self.model
-                .player
-                .seek(jumping.progress(clock.game_time) * JUMP_CLIP_DURATION);
-        } else {
-            self.model.player.update(clock.dt);
+        match &player.state {
+            PlayerState::Jumping(jumping) => {
+                self.model
+                    .player
+                    .seek(jumping.progress(clock.game_time) * JUMP_CLIP_DURATION);
+            }
+            PlayerState::Dying(dying) => {
+                self.model
+                    .player
+                    .seek(dying.progress(clock.game_time) * DYING_CLIP_DURATION);
+            }
+            _ => {
+                self.model.player.update(clock.dt);
+            }
         }
     }
 }
