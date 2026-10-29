@@ -5,12 +5,14 @@ mod resources;
 mod utils;
 mod world;
 
-use floor_is_lava_lib::{Clock, Game};
+use floor_is_lava_lib::{Clock, Controller, Game, PlayerColor, SimpleAiController};
 use glam::vec2;
 use kiss3d::prelude::*;
 
-use crate::controller::{Controller, KeyboardController};
-use crate::world::WorldView;
+use crate::{
+    controller::{KeyboardController, KeyboardState},
+    world::WorldView,
+};
 
 #[kiss3d::main]
 async fn main() {
@@ -19,23 +21,33 @@ async fn main() {
 
     let mut window = Window::new("Floor is lava!").await;
     window.set_shadows_enabled(false);
-    //window.set_samples(NumSamples::One);
+
     let font = Font::default();
     let mut world = WorldView::from_game(&game);
+    let keyboard_state = Rc::new(RefCell::new(KeyboardState::default()));
 
-    let mut red_ctrl = KeyboardController::wasd();
-    let mut blue_ctrl = KeyboardController::arrows();
+    let arg = std::env::args().nth(1);
+    let ai = arg.is_some_and(|arg| arg == "ai");
+
+    let mut red_ctrl: Box<dyn Controller> = if ai {
+        Box::new(SimpleAiController::new(PlayerColor::Red))
+    } else {
+        Box::new(KeyboardController::wasd(&keyboard_state))
+    };
+
+    let mut blue_ctrl = KeyboardController::arrows(&keyboard_state);
 
     while window
         .render_3d(&mut world.world_node, &mut world.camera)
         .await
     {
         clock.tick();
+        keyboard_state.borrow_mut().update(&window);
 
         let events = game.step(
             &clock,
-            red_ctrl.get_action(&window),
-            blue_ctrl.get_action(&window),
+            red_ctrl.get_action(game.cells()),
+            blue_ctrl.get_action(game.cells()),
         );
 
         world.update(&events, &game, &clock);

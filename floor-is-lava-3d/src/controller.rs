@@ -1,11 +1,31 @@
-use floor_is_lava_lib::PlayerAction;
+use std::{cell::RefCell, collections::HashSet, rc::Rc};
+
+use floor_is_lava_lib::{Cells, Controller, PlayerAction};
 use kiss3d::prelude::*;
 
-pub trait Controller {
-    fn get_action(&mut self, window: &Window) -> Option<PlayerAction>;
+#[derive(Default)]
+pub struct KeyboardState {
+    watched: Vec<Key>,
+    pressed: HashSet<Key>,
+}
+
+impl KeyboardState {
+    pub fn update(&mut self, window: &Window) {
+        self.pressed.clear();
+        for &key in &self.watched {
+            if window.get_key(key) == Action::Press {
+                self.pressed.insert(key);
+            }
+        }
+    }
+
+    fn is_pressed(&self, key: Key) -> bool {
+        self.pressed.contains(&key)
+    }
 }
 
 pub struct KeyboardController {
+    state: Rc<RefCell<KeyboardState>>,
     up: Key,
     down: Key,
     left: Key,
@@ -13,34 +33,36 @@ pub struct KeyboardController {
 }
 
 impl KeyboardController {
-    pub fn arrows() -> Self {
+    fn new(state: &Rc<RefCell<KeyboardState>>, up: Key, down: Key, left: Key, right: Key) -> Self {
+        state.borrow_mut().watched.extend([up, down, left, right]);
         Self {
-            up: Key::Up,
-            down: Key::Down,
-            left: Key::Left,
-            right: Key::Right,
+            state: state.clone(),
+            up,
+            down,
+            left,
+            right,
         }
     }
 
-    pub fn wasd() -> Self {
-        Self {
-            up: Key::W,
-            down: Key::S,
-            left: Key::A,
-            right: Key::D,
-        }
+    pub fn arrows(state: &Rc<RefCell<KeyboardState>>) -> Self {
+        KeyboardController::new(state, Key::Up, Key::Down, Key::Left, Key::Right)
+    }
+
+    pub fn wasd(state: &Rc<RefCell<KeyboardState>>) -> Self {
+        KeyboardController::new(state, Key::W, Key::S, Key::A, Key::D)
     }
 }
 
 impl Controller for KeyboardController {
-    fn get_action(&mut self, window: &Window) -> Option<PlayerAction> {
-        if window.get_key(self.left) == Action::Press {
+    fn get_action(&mut self, _cells: &Cells) -> Option<PlayerAction> {
+        let state = self.state.borrow();
+        if state.is_pressed(self.left) {
             Some(PlayerAction::Left)
-        } else if window.get_key(self.right) == Action::Press {
+        } else if state.is_pressed(self.right) {
             Some(PlayerAction::Right)
-        } else if window.get_key(self.up) == Action::Press {
+        } else if state.is_pressed(self.up) {
             Some(PlayerAction::Up)
-        } else if window.get_key(self.down) == Action::Press {
+        } else if state.is_pressed(self.down) {
             Some(PlayerAction::Down)
         } else {
             None

@@ -2,10 +2,11 @@ use glam::{IVec2, ivec2};
 use rand::{RngExt, SeedableRng, rngs::StdRng, seq::IteratorRandom};
 use std::time::Instant;
 
-const LAVA_SPEED: f32 = 1.0 / 4.0;
-const JUMP_DURATION: f32 = 1.0;
-const DYING_DURATION: f32 = 3.0;
-const FALLING_SPEED: f32 = 8.0;
+pub const LAVA_SPEED: f32 = 1.0 / 4.0;
+pub const VISIBLE_ROWS: usize = 4;
+pub const JUMP_DURATION: f32 = 1.0;
+pub const DYING_DURATION: f32 = 3.0;
+pub const FALLING_SPEED: f32 = 8.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BlockId(usize);
@@ -16,7 +17,9 @@ impl BlockId {
     }
 }
 
+#[derive(Default, Clone, Copy, PartialEq)]
 pub enum BlockColor {
+    #[default]
     Neutral,
     Red,
     Blue,
@@ -28,6 +31,15 @@ impl std::fmt::Display for BlockColor {
             BlockColor::Neutral => write!(f, "gray"),
             BlockColor::Red => write!(f, "red"),
             BlockColor::Blue => write!(f, "blue"),
+        }
+    }
+}
+
+impl From<PlayerColor> for BlockColor {
+    fn from(color: PlayerColor) -> Self {
+        match color {
+            PlayerColor::Red => BlockColor::Red,
+            PlayerColor::Blue => BlockColor::Blue,
         }
     }
 }
@@ -91,6 +103,17 @@ pub struct Player {
     pub state: PlayerState,
 }
 
+impl Player {
+    fn position(&self) -> Option<IVec2> {
+        match &self.state {
+            PlayerState::Idle(idle) => Some(idle.position),
+            PlayerState::Jumping(jumping) => Some(jumping.from),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 pub enum PlayerAction {
     Up,
     Down,
@@ -99,7 +122,7 @@ pub enum PlayerAction {
 }
 
 impl PlayerAction {
-    fn to_direction(&self) -> IVec2 {
+    fn to_direction(self) -> IVec2 {
         match self {
             PlayerAction::Up => IVec2::Y,
             PlayerAction::Down => IVec2::NEG_Y,
@@ -109,6 +132,26 @@ impl PlayerAction {
     }
 }
 
+#[derive(Default)]
+pub struct Cell {
+    pub points: usize,
+    pub color: BlockColor,
+    pub red_player: bool,
+    pub blue_player: bool,
+    pub distance_from_lava: f32,
+}
+
+impl Cell {
+    pub fn has_player(&self, color: PlayerColor) -> bool {
+        match color {
+            PlayerColor::Red => self.red_player,
+            PlayerColor::Blue => self.blue_player,
+        }
+    }
+}
+
+pub type Cells = [[Cell; 7]; VISIBLE_ROWS];
+
 pub struct Game {
     pub blocks: Vec<Block>,
     pub lava_height: f32,
@@ -116,10 +159,11 @@ pub struct Game {
     pub blue_player: Player,
     next_block_id: BlockId,
     rng: StdRng,
+    cells: Cells,
 }
 
 pub enum ClockMode {
-    Realtime { start: Instant, last_time: Instant },
+    Realtime { last_time: Instant },
     Fixed { dt: f32 },
 }
 
@@ -133,10 +177,7 @@ impl Clock {
     pub fn realtime() -> Self {
         let now = Instant::now();
         Self {
-            mode: ClockMode::Realtime {
-                start: now,
-                last_time: now,
-            },
+            mode: ClockMode::Realtime { last_time: now },
             dt: 0.0,
             game_time: 0.0,
         }
@@ -152,10 +193,10 @@ impl Clock {
 
     pub fn tick(&mut self) {
         match &mut self.mode {
-            ClockMode::Realtime { start, last_time } => {
+            ClockMode::Realtime { last_time } => {
                 let now = Instant::now();
-                self.game_time = now.duration_since(*start).as_secs_f32();
                 self.dt = now.duration_since(*last_time).as_secs_f32().min(0.05);
+                self.game_time += self.dt;
                 *last_time = now;
             }
             ClockMode::Fixed { dt } => {
@@ -200,6 +241,7 @@ impl Game {
                 }),
             },
             next_block_id: BlockId(0),
+            cells: Default::default(),
             rng,
         };
 
@@ -232,6 +274,33 @@ impl Game {
             .binary_search_by_key(&id, |block| block.id)
             .ok()
             .map(|index| &self.blocks[index])
+    }
+
+    fn update_cells(&mut self) {
+        self.cells = Default::default();
+        let min_height = self.blocks[0].position.y;
+
+        for block in &self.blocks {
+            let row = (block.position.y - min_height) as usize;
+            let col = (block.position.x + 3) as usize;
+            let cell = &mut self.cells[row][col];
+            cell.color = block.color;
+            cell.points = block.points;
+            cell.distance_from_lava = block.position.y as f32 - self.lava_height;
+        }
+
+        for player in [&self.red_player, &self.blue_player] {
+            if let Some(player_position) = player.position() {
+                let row = (player_position.y - min_height) as usize;
+                if row < VISIBLE_ROWS {
+                    let col = (player_position.x + 3) as usize;
+                    match player.color {
+                        PlayerColor::Red => self.cells[row][col].red_player = true,
+                        PlayerColor::Blue => self.cells[row][col].blue_player = true,
+                    }
+                }
+            }
+        }
     }
 
     pub fn step(
@@ -283,7 +352,7 @@ impl Game {
             }
         });
 
-        if (max_height as f32) - self.lava_height < 3.0 {
+        if (max_height as f32) - self.lava_height < (VISIBLE_ROWS - 1) as f32 {
             let y = max_height + 1;
             let guaranteed_x = (-3..=3).choose(&mut self.rng).unwrap();
             for x in -3..=3 {
@@ -317,10 +386,7 @@ impl Game {
                             Game::is_standing_on_block(&mut self.blocks, jumping.to)
                         {
                             // hit -> claim the block and become idle
-                            landing_block.color = match player.color {
-                                PlayerColor::Red => BlockColor::Red,
-                                PlayerColor::Blue => BlockColor::Blue,
-                            };
+                            landing_block.color = player.color.into();
                             events.push(GameEvent::BlockColored(landing_block.id));
                             player.state = PlayerState::Idle(Idle {
                                 position: jumping.to,
@@ -363,7 +429,12 @@ impl Game {
             }
         }
 
+        self.update_cells();
         events
+    }
+
+    pub fn cells(&self) -> &Cells {
+        &self.cells
     }
 }
 
