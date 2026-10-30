@@ -837,6 +837,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "floor-is-lava-headless"
+version = "0.1.0"
+dependencies = [
+ "floor-is-lava-lib",
+]
+
+[[package]]
 name = "floor-is-lava-lib"
 version = "0.1.0"
 dependencies = [

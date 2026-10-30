@@ -1,9 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "floor-is-lava-3d",
-    "floor-is-lava-lib",
-]
+members = ["floor-is-lava-3d", "floor-is-lava-lib", "floor-is-lava-headless"]
 
 [workspace.dependencies]
 glam = "0.33"

@@ -1,0 +1,7 @@
+[package]
+name = "floor-is-lava-headless"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+floor-is-lava-lib = { version = "0.1.0", path = "../floor-is-lava-lib" }
