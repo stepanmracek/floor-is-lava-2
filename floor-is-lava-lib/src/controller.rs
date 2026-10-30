@@ -19,7 +19,9 @@ impl SimpleAiController {
 fn find_player(cells: &Cells, player_color: PlayerColor) -> Option<(&Cell, IVec2)> {
     for (y, row) in cells.iter().enumerate() {
         for (x, cell) in row.iter().enumerate() {
-            if cell.has_player(player_color) {
+            if let Some(cell) = cell
+                && cell.has_player(player_color)
+            {
                 return Some((cell, ivec2(x as i32, y as i32)));
             }
         }
@@ -28,16 +30,9 @@ fn find_player(cells: &Cells, player_color: PlayerColor) -> Option<(&Cell, IVec2
 }
 
 fn get_cell(cells: &Cells, pos: IVec2) -> Option<&Cell> {
-    let (col, row) = pos.into();
-
-    if row >= 0 && row < cells.len() as i32 && col >= 0 && col < cells[0].len() as i32 {
-        let cell = &cells[row as usize][col as usize];
-        if cell.points > 0 {
-            return Some(cell);
-        }
-    }
-
-    None
+    let row = usize::try_from(pos.y).ok()?;
+    let col = usize::try_from(pos.x).ok()?;
+    cells.get(row)?.get(col)?.as_ref()
 }
 
 impl Controller for SimpleAiController {

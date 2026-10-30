@@ -150,7 +150,7 @@ impl Cell {
     }
 }
 
-pub type Cells = [[Cell; 7]; VISIBLE_ROWS];
+pub type Cells = [[Option<Cell>; 7]; VISIBLE_ROWS];
 
 pub struct Game {
     pub blocks: Vec<Block>,
@@ -283,10 +283,13 @@ impl Game {
         for block in &self.blocks {
             let row = (block.position.y - min_height) as usize;
             let col = (block.position.x + 3) as usize;
-            let cell = &mut self.cells[row][col];
-            cell.color = block.color;
-            cell.points = block.points;
-            cell.distance_from_lava = block.position.y as f32 - self.lava_height;
+            self.cells[row][col] = Some(Cell {
+                points: block.points,
+                color: block.color,
+                red_player: false,
+                blue_player: false,
+                distance_from_lava: block.position.y as f32 - self.lava_height,
+            });
         }
 
         for player in [&self.red_player, &self.blue_player] {
@@ -294,9 +297,11 @@ impl Game {
                 let row = (player_position.y - min_height) as usize;
                 if row < VISIBLE_ROWS {
                     let col = (player_position.x + 3) as usize;
-                    match player.color {
-                        PlayerColor::Red => self.cells[row][col].red_player = true,
-                        PlayerColor::Blue => self.cells[row][col].blue_player = true,
+                    if let Some(cell) = self.cells[row][col].as_mut() {
+                        match player.color {
+                            PlayerColor::Red => cell.red_player = true,
+                            PlayerColor::Blue => cell.blue_player = true,
+                        }
                     }
                 }
             }
