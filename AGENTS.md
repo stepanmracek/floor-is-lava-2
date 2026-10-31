@@ -5,10 +5,10 @@
 | crate | purpose |
 |---|---|
 | `floor-is-lava-lib` | the game: rules, `Game::step`, `Cells`, `Controller` trait, `SimpleAiController` |
-| `floor-is-lava-3d` | playable 3D client (kiss3d); red: keyboard / `ai-easy` (simple AI) / `ai-hard` (learned policy) |
-| `floor-is-lava-headless` | runs the game without graphics |
+| `floor-is-lava-3d` | playable 3D client (kiss3d); red: keyboard / `ai-easy` (simple AI) / `ai-hard` (learned policy, embedded) |
+| `floor-is-lava-headless` | runs games without graphics; currently policy-against-policy evaluation over 200 seeded games |
 | `floor-is-lava-learn` | RL training with burn: REINFORCE, actor-critic, export |
-| `floor-is-lava-policy` | burn-free observation encoding, plain-Rust policy, SafeTensors I/O |
+| `floor-is-lava-policy` | burn-free observation encoding, plain-Rust policy, SafeTensors I/O, `PolicyController` (seeded) |
 
 ## Documentation
 
@@ -19,7 +19,7 @@
 - `floor-is-lava-learn/adr-actor_critic.md`: separate critic, warm-up, fine-tuning
   learning rate, bootstrapping, diagnostics, actor-critic results.
 - `floor-is-lava-learn/adr-policy-deployment.md`: the shared policy crate, SafeTensors
-  export, `PolicyController`.
+  export, `PolicyController` (seeding, use in the 3D client and headless), playing blue.
 - `floor-is-lava-learn/todo.md`: roadmap as a checklist (next experiments, evaluation,
   self-play).
 - `floor-is-lava-learn/practicalities.md`: burn 0.22 and Adam pitfalls, training
@@ -49,4 +49,6 @@ cargo build --release
 cargo test -p floor-is-lava-learn            # includes burn-vs-plain policy checks
 cargo run --release -p floor-is-lava-3d -- ai-hard
 cargo run --release -p floor-is-lava-learn -- actor-critic 42 <policy.bpk>
+cargo run --release -p floor-is-lava-learn -- export <policy.bpk> <policy.safetensors>
+cargo run --release -p floor-is-lava-headless -- 42 <red.safetensors> <blue.safetensors>
 ```

@@ -1,18 +1,17 @@
 mod constants;
 mod controller;
-mod controller_policy;
 mod player;
 mod resources;
 mod utils;
 mod world;
 
 use floor_is_lava_lib::{Clock, Controller, Game, PlayerColor, SimpleAiController};
+use floor_is_lava_policy::PolicyController;
 use glam::vec2;
 use kiss3d::prelude::*;
 
 use crate::{
     controller::{KeyboardController, KeyboardState},
-    controller_policy::PolicyController,
     world::WorldView,
 };
 
@@ -37,7 +36,7 @@ async fn main() {
         None => Box::new(KeyboardController::wasd(&keyboard_state)),
         Some("ai-easy") => Box::new(SimpleAiController::new(PlayerColor::Red)),
         Some("ai-hard") => {
-            Box::new(PolicyController::from_bytes(HARD_AI_POLICY, PlayerColor::Red).unwrap())
+            Box::new(PolicyController::from_bytes(HARD_AI_POLICY, PlayerColor::Red, 42).unwrap())
         }
         Some(other) => panic!("Unknown controller: {other}"),
     };

@@ -3,7 +3,8 @@
 Decisions and results behind the done items are in `adr-reinforce.md`,
 `adr-actor_critic.md` and `adr-policy-deployment.md`.
 
-Order: **1. egocentric observation → 2. training against older snapshots → 3. CNN.**
+Order: **0. mirror the board for blue → 1. egocentric observation (if corner deaths
+justify it) → 2. training against older snapshots → 3. CNN.**
 
 ## Done
 
@@ -16,7 +17,8 @@ Order: **1. egocentric observation → 2. training against older snapshots → 3
     steps, bootstrapping at the episode cut
   - margin +57 after 10 000 updates, still rising
 - [x] Diagnostics: entropy, explained variance, approximate KL
-- [x] Export to SafeTensors, `PolicyController` in the 3D client (`ai-hard`)
+- [x] Export to SafeTensors, `PolicyController` in `floor-is-lava-policy` (seeded rng),
+  used by the 3D client (`ai-hard`) and the headless evaluation
 - [x] Second actor-critic run against the simple AI: 20 000 updates from
   `actor-critic-policy.bpk` (`FINE_TUNE_LEARNING_RATE` = 3e-4); params in
   `snapshots/actor-critic-params2.txt`, log in `snapshots/actor-critic-log2.txt`,
@@ -26,6 +28,22 @@ Order: **1. egocentric observation → 2. training against older snapshots → 3
     updates on** (1000-update windows: +74.6, +77.6, +76.2, +75.6, +76.8).
   - **Decision: no further hyperparameter tuning against the simple AI.** Further gains
     would mostly exploit that one opponent's weaknesses; move on to other opponents.
+- [x] Headless self-play of `actor-critic-policy2` against itself (`PolicyController` on
+  both sides, now in `floor-is-lava-policy`):
+  - **One 24-hour game:** red 143 158, blue 144 731, i.e. 102.5 vs 103.6 per minute.
+    The difference is within noise (±~1.2 per minute), so over a long game the
+    colours are equal: once both players have moved around, the start position
+    doesn't matter.
+  - **200 games of 60 s, seeds 42 … 241:** red wins 147, blue 51 (74% for red, ~6.8
+    standard errors from 50%), average margin **+26.0 for red**. Varying seeds rule out a
+    single favourable board.
+    - Reproducible: each `PolicyController` samples from its own seeded rng (red from
+      the seed, blue from the seed + 2³²), so the run repeats exactly. A first run with
+      unseeded sampling gave 77% / +28.9.
+  - **Conclusion: the red-trained policy plays the opening badly as blue.** It learned an
+    opening for starting at x = −2; as blue it starts at x = 2. Training episodes are
+    60 s, so the opening is a large part of each one, and blue snapshot opponents would
+    be handicapped exactly there.
 
 ## Observations from playing against `actor-critic-policy2`
 
@@ -37,17 +55,48 @@ Order: **1. egocentric observation → 2. training against older snapshots → 3
   void.** Likely because these situations were rare in training, and with absolute
   columns the network has to learn each corner as a separate input pattern.
 
+## 0. Mirror the board for blue
+
+The game is left-right symmetric: start positions −2 / +2, uniform block spawning,
+random player order. So blue can play as if it were red in a mirrored world, which
+gives existing snapshots full strength as blue **without retraining**. It's exact, not
+an approximation, because the rules themselves are symmetric.
+
+- [ ] In `floor_is_lava_policy`, when `me` is blue:
+  - `observation` reads the columns in reverse order (x → −x);
+  - the action is mirrored: Left ↔ Right (Up, Down, None unchanged).
+
+  Both belong to the shared crate, so `PolicyController`, training rollouts and future
+  snapshot opponents all get them.
+- [ ] **Verify with the headless test** (same snapshot on both sides, 200 seeds of 60 s):
+  red's win rate should drop from the 74% baseline to ~50%, and the margin from +26.0
+  to ~0. Same seed (42), so the comparison is direct.
+- [ ] Re-export nothing: the snapshots stay the same, only the encoding for blue changes.
+  Update `adr-policy-deployment.md` (the agent can now play either colour).
+
+Consequences:
+
+- **Colour randomization in training becomes unnecessary:** the agent can keep
+  training as red, and blue players use the mirrored view.
+- **Existing snapshots can be opponents at full strength,** so step 2 no longer depends
+  on step 1.
+
 ## 1. Egocentric observation
 
-Do this first: every snapshot is tied to its observation encoding, so changing the
-encoding after self-play would throw that training away.
+With mirroring solving the colour problem, **the remaining reason is the corner
+weakness.** Egocentric means retraining from scratch, so measure first.
 
-**Expected benefits:**
+- [ ] **Measure corner deaths first:** the death classification from the evaluation
+  harness below, run on `actor-critic-policy2` in the headless setup.
+  - Corner deaths a big share of all deaths: egocentric is justified; do it before
+    step 2, because every snapshot is tied to its observation encoding and changing it
+    after self-play would throw that training away.
+  - Corner deaths rare: go straight to step 2 with the existing snapshots, and keep
+    egocentric for later.
 
-- Translation invariance: "void above me, a block to my left" looks the same anywhere
-  on the board, so experience from the middle transfers to the rare corner situations.
-- It solves the colour problem: without absolute columns a policy plays blue the way it
-  plays red, so colour randomization becomes easy.
+**Expected benefit:** translation invariance. "Void above me, a block to my left" looks
+the same anywhere on the board, so experience from the middle transfers to the rare
+corner situations.
 
 **Tasks:**
 
@@ -61,9 +110,8 @@ encoding after self-play would throw that training away.
     cell: 13 × 7 × 5 = 455 inputs (168 today);
   - height stays visible through `distance_from_lava` per cell;
   - keep the layout `[rows][columns][features]` in a known order, so the same vector
-    can be reshaped to `[features, rows, columns]` for step 3 (CNN).
-- [ ] **Randomize the agent's colour per episode** from the start, so the new snapshots
-  can play both sides.
+    can be reshaped to `[features, rows, columns]` for step 3 (CNN);
+  - for blue, mirror the window the same way as in step 0.
 - [ ] **Save the critic alongside the policy snapshots,** and load it on restart. Each
   restart currently costs the 200-update warm-up (explained variance starts at ~0.1
   instead of ~0.25).
@@ -76,11 +124,13 @@ encoding after self-play would throw that training away.
 - [ ] **Re-export `ai-hard`;** `PolicyController` follows the new observation
   automatically through the shared crate.
 
-**Evaluation harness** (needed from here on; all numbers so far come from training
-rollouts: a sampling policy, always red, against the simple AI):
+**Evaluation harness** (needed from here on; apart from the headless colour test, all
+numbers so far come from training rollouts: a sampling policy, always red, against the
+simple AI):
 
 - [ ] Evaluation in `floor-is-lava-headless`: fixed seeds, many games, win rate and
-  margin, as both colours
+  margin, as both colours. Started: the 200-game colour test (policy against policy)
+  is the first version; it still needs other opponents such as the simple AI.
 - [ ] **Death classification:** position on the board, and the situation:
   - jumped into the void while all reachable blocks were already its own (deliberate
     island escape, a good move);
@@ -99,14 +149,18 @@ existing safeguards cover most of what PPO would provide at first:
 - the learning rate is cautious (KL max 0.0025);
 - the simple AI stays in the pool against forgetting.
 
-Snapshots with the old (absolute) encoding can't be opponents unless the encoding is
-versioned. Simpler: the pool starts with the simple AI and the new egocentric snapshots
-only.
+Which snapshots can be opponents depends on step 1:
+
+- **Egocentric done:** snapshots with the old (absolute) encoding can't be opponents
+  unless the encoding is versioned. Simpler: the pool starts with the simple AI and the
+  new egocentric snapshots only.
+- **Egocentric skipped:** the existing snapshots, playing blue through the mirrored view
+  from step 0.
 
 **Tasks:**
 
-- [ ] **Benchmark opponents for the evaluation:** the simple AI plus frozen egocentric
-  snapshots. Evaluate every ~100–200 updates. Progress means rising numbers against all
+- [ ] **Benchmark opponents for the evaluation:** the simple AI plus frozen snapshots
+  (egocentric ones if step 1 was done). Evaluate every ~100–200 updates. Progress means rising numbers against all
   benchmarks; falling numbers against old ones mean forgetting, so roll back.
 - [ ] **Opponent pool, one opponent per episode:**
   - ~50% recent snapshots, ~30% older snapshots, ~20% simple AI;
@@ -116,10 +170,13 @@ only.
     without old opponents in the batches nothing reminds the policy how to beat them.
   - Implementation notes:
     - each parallel episode gets its own opponent as `Box<dyn Controller>`;
-    - a policy opponent is a `PlainPolicy` with its own rng, seeded from the episode's
-      seeds for reproducibility;
-    - snapshots are loaded through burn into `PlainPolicy` once, when the pool changes,
-      not per episode.
+    - a policy opponent is a `PolicyController` (from `floor-is-lava-policy`, already
+      used by the 3D client and headless), seeded from the episode's seeds with an offset
+      from the agent's sampling seed, so the two players don't draw correlated random
+      numbers;
+    - snapshots are loaded into `PlainPolicy` once, when the pool changes, not per
+      episode. `PolicyController` owns its `PlainPolicy`, so sharing one loaded snapshot
+      between parallel episodes needs a small change, e.g. holding it in an `Arc`.
 - [ ] **PPO** (clipped probability ratio, several epochs per batch), if KL spikes or the
   evaluation shows forgetting.
   - Limits how far one update moves the policy, the real fix for "too aggressive and it
@@ -132,7 +189,8 @@ only.
 
 ## 3. Convolutional layers
 
-A separate experiment after steps 1 and 2, compared against their result. Changing the
+A separate experiment after steps 1 and 2, compared against their result. It needs the
+egocentric grid from step 1. Changing the
 encoding and the architecture at once would make it impossible to tell which helped.
 
 - [ ] **Conv layers on the egocentric grid** (`[features, rows, columns]`), then dense

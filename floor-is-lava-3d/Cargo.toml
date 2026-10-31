@@ -8,4 +8,3 @@ floor-is-lava-lib = { path = "../floor-is-lava-lib" }
 floor-is-lava-policy = { path = "../floor-is-lava-policy" }
 glam = { workspace = true }
 kiss3d = "0.47.0"
-rand = "0.10.3"

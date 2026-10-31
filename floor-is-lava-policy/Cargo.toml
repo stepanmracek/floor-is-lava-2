@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 floor-is-lava-lib = { path = "../floor-is-lava-lib" }
 safetensors = "0.8"
+rand = "0.10.3"

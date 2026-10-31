@@ -3177,7 +3177,6 @@ dependencies = [
  "floor-is-lava-policy",
  "glam",
  "kiss3d",
- "rand 0.10.3",
 ]
 
 [[package]]
@@ -3185,6 +3184,7 @@ name = "floor-is-lava-headless"
 version = "0.1.0"
 dependencies = [
  "floor-is-lava-lib",
+ "floor-is-lava-policy",
 ]
 
 [[package]]
@@ -3211,6 +3211,7 @@ name = "floor-is-lava-policy"
 version = "0.1.0"
 dependencies = [
  "floor-is-lava-lib",
+ "rand 0.10.3",
  "safetensors 0.8.0",
 ]
 

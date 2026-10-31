@@ -1,12 +1,15 @@
 //! Learned policy without any ML framework: the observation encoding and a plain-Rust
 //! forward pass of the policy network. Shared by the training (fast rollouts) and by
 //! the game front-ends.
+mod controller;
 
 use std::error::Error;
 use std::path::Path;
 
 use floor_is_lava_lib::{BlockColor, Cells, PlayerAction, PlayerColor, VISIBLE_ROWS};
 use safetensors::{Dtype, SafeTensors, tensor::TensorView};
+
+pub use controller::PolicyController;
 
 const COLUMNS: usize = 7;
 const FEATURES_PER_CELL: usize = 6;
