@@ -157,7 +157,7 @@ impl PlainPolicy {
     }
 
     pub fn from_bytes(buffer: &[u8]) -> Result<Self, Box<dyn Error>> {
-        let tensors = SafeTensors::deserialize(&buffer)?;
+        let tensors = SafeTensors::deserialize(buffer)?;
         let tensor = |name: &str, expected_shape: &[usize]| -> Result<Vec<f32>, Box<dyn Error>> {
             let view = tensors.tensor(name)?;
             if view.dtype() != Dtype::F32 || view.shape() != expected_shape {
