@@ -1,5 +1,6 @@
 mod constants;
 mod controller;
+mod controller_policy;
 mod player;
 mod resources;
 mod utils;
@@ -11,6 +12,7 @@ use kiss3d::prelude::*;
 
 use crate::{
     controller::{KeyboardController, KeyboardState},
+    controller_policy::PolicyController,
     world::WorldView,
 };
 
@@ -27,12 +29,17 @@ async fn main() {
     let keyboard_state = Rc::new(RefCell::new(KeyboardState::default()));
 
     let arg = std::env::args().nth(1);
-    let ai = arg.is_some_and(|arg| arg == "ai");
 
-    let mut red_ctrl: Box<dyn Controller> = if ai {
-        Box::new(SimpleAiController::new(PlayerColor::Red))
-    } else {
-        Box::new(KeyboardController::wasd(&keyboard_state))
+    const HARD_AI_POLICY: &[u8] =
+        include_bytes!("../../floor-is-lava-learn/snapshots/actor-critic-policy-10000.safetensors");
+
+    let mut red_ctrl: Box<dyn Controller> = match arg.as_deref() {
+        None => Box::new(KeyboardController::wasd(&keyboard_state)),
+        Some("ai-easy") => Box::new(SimpleAiController::new(PlayerColor::Red)),
+        Some("ai-hard") => {
+            Box::new(PolicyController::from_bytes(HARD_AI_POLICY, PlayerColor::Red).unwrap())
+        }
+        Some(other) => panic!("Unknown controller: {other}"),
     };
 
     let mut blue_ctrl = KeyboardController::arrows(&keyboard_state);
@@ -51,6 +58,15 @@ async fn main() {
         );
 
         world.update(&events, &game, &clock);
+
+        let fps = 1.0 / clock.dt;
+        window.draw_text(
+            &format!("{fps:.0}FPS"),
+            vec2(5.0, window.height() as f32 - 20.0),
+            15.0,
+            &font,
+            WHITE,
+        );
 
         window.draw_text(
             &format!("{}", game.red_player.score),

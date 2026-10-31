@@ -103,16 +103,6 @@ pub struct Player {
     pub state: PlayerState,
 }
 
-impl Player {
-    fn position(&self) -> Option<IVec2> {
-        match &self.state {
-            PlayerState::Idle(idle) => Some(idle.position),
-            PlayerState::Jumping(jumping) => Some(jumping.from),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
 pub enum PlayerAction {
     Up,
@@ -136,16 +126,18 @@ impl PlayerAction {
 pub struct Cell {
     pub points: usize,
     pub color: BlockColor,
-    pub red_player: bool,
-    pub blue_player: bool,
+    pub red_standing: f32,
+    pub red_landing: f32,
+    pub blue_standing: f32,
+    pub blue_landing: f32,
     pub distance_from_lava: f32,
 }
 
 impl Cell {
     pub fn has_player(&self, color: PlayerColor) -> bool {
         match color {
-            PlayerColor::Red => self.red_player,
-            PlayerColor::Blue => self.blue_player,
+            PlayerColor::Red => self.red_standing > 0.0,
+            PlayerColor::Blue => self.blue_standing > 0.0,
         }
     }
 }
@@ -276,7 +268,7 @@ impl Game {
             .map(|index| &self.blocks[index])
     }
 
-    fn update_cells(&mut self) {
+    fn update_cells(&mut self, game_time: f32) {
         self.cells = Default::default();
         let min_height = self.blocks[0].position.y;
 
@@ -286,23 +278,45 @@ impl Game {
             self.cells[row][col] = Some(Cell {
                 points: block.points,
                 color: block.color,
-                red_player: false,
-                blue_player: false,
                 distance_from_lava: block.position.y as f32 - self.lava_height,
+                ..Default::default()
             });
         }
 
         for player in [&self.red_player, &self.blue_player] {
-            if let Some(player_position) = player.position() {
-                let row = (player_position.y - min_height) as usize;
-                if row < VISIBLE_ROWS {
-                    let col = (player_position.x + 3) as usize;
-                    if let Some(cell) = self.cells[row][col].as_mut() {
-                        match player.color {
-                            PlayerColor::Red => cell.red_player = true,
-                            PlayerColor::Blue => cell.blue_player = true,
-                        }
-                    }
+            let (from, to, progress) = match &player.state {
+                PlayerState::Idle(idle) => (Some(idle.position), None, 0.0),
+                PlayerState::Jumping(jumping) => (
+                    Some(jumping.from),
+                    Some(jumping.to),
+                    jumping.progress(game_time),
+                ),
+                _ => (None, None, 0.0),
+            };
+
+            let pos_to_row_col = |pos: IVec2| {
+                let row = usize::try_from(pos.y - min_height).ok()?;
+                let col = usize::try_from(pos.x + 3).ok()?;
+                Some((row, col))
+            };
+
+            if let Some(cell) = from
+                .and_then(pos_to_row_col)
+                .and_then(|(row, col)| self.cells.get_mut(row)?.get_mut(col)?.as_mut())
+            {
+                match player.color {
+                    PlayerColor::Red => cell.red_standing = 1.0 - progress,
+                    PlayerColor::Blue => cell.blue_standing = 1.0 - progress,
+                }
+            };
+
+            if let Some(cell) = to
+                .and_then(pos_to_row_col)
+                .and_then(|(row, col)| self.cells.get_mut(row)?.get_mut(col)?.as_mut())
+            {
+                match player.color {
+                    PlayerColor::Red => cell.red_landing = progress,
+                    PlayerColor::Blue => cell.blue_landing = progress,
                 }
             }
         }
@@ -434,7 +448,7 @@ impl Game {
             }
         }
 
-        self.update_cells();
+        self.update_cells(clock.game_time);
         events
     }
 

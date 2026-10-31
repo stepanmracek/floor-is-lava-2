@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-floor-is-lava-lib = { version = "0.1.0", path = "../floor-is-lava-lib" }
+floor-is-lava-lib = { path = "../floor-is-lava-lib" }
+floor-is-lava-policy = { path = "../floor-is-lava-policy" }
 glam = { workspace = true }
 kiss3d = "0.47.0"
+rand = "0.10.3"

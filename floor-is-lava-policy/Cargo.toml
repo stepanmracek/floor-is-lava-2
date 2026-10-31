@@ -1,0 +1,8 @@
+[package]
+name = "floor-is-lava-policy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+floor-is-lava-lib = { path = "../floor-is-lava-lib" }
+safetensors = "0.8"
