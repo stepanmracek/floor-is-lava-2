@@ -3,6 +3,8 @@
 Decisions and results behind the done items are in `adr-reinforce.md`,
 `adr-actor_critic.md` and `adr-policy-deployment.md`.
 
+Order: **1. egocentric observation → 2. training against older snapshots → 3. CNN.**
+
 ## Done
 
 - [x] Observation encoding from `Cells` (standing / landing channels)
@@ -25,37 +27,70 @@ Decisions and results behind the done items are in `adr-reinforce.md`,
   - **Decision: no further hyperparameter tuning against the simple AI.** Further gains
     would mostly exploit that one opponent's weaknesses; move on to other opponents.
 
-## Before self-play
+## Observations from playing against `actor-critic-policy2`
 
-- [ ] **Check how a red-trained snapshot plays as blue.** Headless, against the simple
-  AI, a few dozen games.
-  - Every snapshot so far only played red. The observation is relative to "me" for
-    ownership and players, but the columns are absolute and the board isn't mirrored
-    (red starts at x = −2, blue at x = 2).
-  - Plays fine: existing snapshots can be opponents right away.
-  - Plays badly: use as opponents only snapshots trained with randomized colours,
-    otherwise the agent learns to beat crippled opponents.
-- [ ] **Randomize the agent's colour per episode,** so new snapshots can play both sides.
-- [ ] **Save the critic alongside the policy snapshots,** and load it on restart.
-  Restarts become frequent with changing opponents, and each currently costs the
-  200-update warm-up (explained variance starts at ~0.1 instead of ~0.25).
+- Inhuman reaction time in the chicken game (expected: it decides on every tick).
+- Very aggressive play, especially close to the lava (expected).
+- Sometimes "panics": very close to the lava, with blocks to the left or right but none
+  above, it jumps into the void. A dumb move, but human-like.
+- **Plays badly in the upper-left and upper-right corners, usually jumping into the
+  void.** Likely because these situations were rare in training, and with absolute
+  columns the network has to learn each corner as a separate input pattern.
 
-## Evaluation harness
+## 1. Egocentric observation
 
-All numbers so far come from training rollouts: a sampling policy, always red, against
-the simple AI. Against a mixed opponent pool the training margin depends on which
-opponents were drawn, so it stops being comparable over time.
+Do this first: every snapshot is tied to its observation encoding, so changing the
+encoding after self-play would throw that training away.
+
+**Expected benefits:**
+
+- Translation invariance: "void above me, a block to my left" looks the same anywhere
+  on the board, so experience from the middle transfers to the rare corner situations.
+- It solves the colour problem: without absolute columns a policy plays blue the way it
+  plays red, so colour randomization becomes easy.
+
+**Tasks:**
+
+- [ ] **New encoding in `floor_is_lava_policy::observation`,** centred on the player:
+  - the window covers the whole board from any position: columns −6 … +6 (13),
+    rows −3 … +3 (7);
+  - cells outside the board are encoded like a missing block (points −1, everything else
+    0): both are void, and jumping there kills;
+  - drop the "my standing" channel: I'm always in the centre, and I decide only while
+    idle, so it would always be 1 there at decision time. That leaves 5 features per
+    cell: 13 × 7 × 5 = 455 inputs (168 today);
+  - height stays visible through `distance_from_lava` per cell;
+  - keep the layout `[rows][columns][features]` in a known order, so the same vector
+    can be reshaped to `[features, rows, columns]` for step 3 (CNN).
+- [ ] **Randomize the agent's colour per episode** from the start, so the new snapshots
+  can play both sides.
+- [ ] **Save the critic alongside the policy snapshots,** and load it on restart. Each
+  restart currently costs the 200-update warm-up (explained variance starts at ~0.1
+  instead of ~0.25).
+- [ ] **Run name in the snapshot path,** e.g. `snapshots/<run>/policy-{update:05}.bpk`.
+  Each run's counter starts at 1, so a continued run overwrites the previous run's
+  snapshots; final snapshots are currently renamed by hand.
+- [ ] **Retrain from scratch:** the existing snapshots can't be converted. Roughly
+  REINFORCE 10 000 updates (~30 min) plus actor-critic ~30 000 (~4 h); possibly
+  actor-critic directly from a random policy.
+- [ ] **Re-export `ai-hard`;** `PolicyController` follows the new observation
+  automatically through the shared crate.
+
+**Evaluation harness** (needed from here on; all numbers so far come from training
+rollouts: a sampling policy, always red, against the simple AI):
 
 - [ ] Evaluation in `floor-is-lava-headless`: fixed seeds, many games, win rate and
-  margin
-- [ ] Benchmark opponents: the simple AI plus the frozen snapshots kept in `snapshots/`:
-  `reinforce-policy-10000.bpk` (margin +22), `actor-critic-policy.bpk` (+57) and
-  `actor-critic-policy2.bpk` (+76)
-- [ ] Evaluate as both colours
-- [ ] During self-play, evaluate every ~100–200 updates. Progress means rising numbers
-  against all benchmarks; falling numbers against old ones mean forgetting, so roll back.
+  margin, as both colours
+- [ ] **Death classification:** position on the board, and the situation:
+  - jumped into the void while all reachable blocks were already its own (deliberate
+    island escape, a good move);
+  - jumped into the void with unclaimed or opponent blocks reachable (a mistake, e.g. the
+    corner and "panic" deaths);
+  - sank while standing still.
+- [ ] **Compare** the egocentric agent with `actor-critic-policy2.bpk` against the simple
+  AI. Expect fewer corner deaths, and see whether the overall margin improves.
 
-## Self-play
+## 2. Training against older snapshots
 
 **Order: opponent pool on the current actor-critic first, PPO only if needed.** The
 existing safeguards cover most of what PPO would provide at first:
@@ -64,8 +99,15 @@ existing safeguards cover most of what PPO would provide at first:
 - the learning rate is cautious (KL max 0.0025);
 - the simple AI stays in the pool against forgetting.
 
-Tasks:
+Snapshots with the old (absolute) encoding can't be opponents unless the encoding is
+versioned. Simpler: the pool starts with the simple AI and the new egocentric snapshots
+only.
 
+**Tasks:**
+
+- [ ] **Benchmark opponents for the evaluation:** the simple AI plus frozen egocentric
+  snapshots. Evaluate every ~100–200 updates. Progress means rising numbers against all
+  benchmarks; falling numbers against old ones mean forgetting, so roll back.
 - [ ] **Opponent pool, one opponent per episode:**
   - ~50% recent snapshots, ~30% older snapshots, ~20% simple AI;
   - snapshot opponents sample their actions (deterministic opponents are exploitable
@@ -88,13 +130,30 @@ Tasks:
     save and restore the optimizer state;
   - keep the entropy bonus.
 
+## 3. Convolutional layers
+
+A separate experiment after steps 1 and 2, compared against their result. Changing the
+encoding and the architecture at once would make it impossible to tell which helped.
+
+- [ ] **Conv layers on the egocentric grid** (`[features, rows, columns]`), then dense
+  layers reading the result relative to the centre.
+  - Convolution shares weights across positions, so local patterns ("void next to a
+    block near the lava") are recognized the same way everywhere.
+  - The board is tiny: two 3×3 layers already see a 5×5 neighbourhood, so the gain over
+    an egocentric MLP may be modest. Measure it.
+- [ ] **Plain-Rust convolution in `floor-is-lava-policy`,** matching burn's `Conv2d`
+  exactly: weight layout `[out_channels, in_channels, kh, kw]`, padding, stride.
+  Extend the burn-vs-plain tests and the SafeTensors export (`conv1.weight`, …).
+- [ ] If the architecture keeps growing, reconsider ONNX with `tract` instead of
+  hand-written inference (see `adr-policy-deployment.md`).
+
 ## Smaller items
 
-- [ ] Run name in the snapshot path, e.g. `snapshots/<run>/policy-{update:05}.bpk`.
-  Each run's counter starts at 1, so a continued run overwrites the previous run's
-  snapshots with the same names; final snapshots are currently renamed by hand.
 - [ ] Throttle `PolicyController` to 60 decisions per second if the frame rate visibly
   changes the agent's behaviour (needs the game time in `Controller::get_action`)
+- [ ] Difficulty levels for the 3D client: per-decision mixing with the simple AI (drawn
+  when the player becomes idle, not per tick), and/or reaction delay. Measure the win
+  rate curve over the setting.
 - [ ] Rename `PlainPolicy` to a neutral `PlainMlp`; the critic reuses it with one output
 - [ ] Share the rollout loop between `reinforce.rs` and `actor_critic.rs` if both stay
 - [ ] Maybe: merge `floor-is-lava-policy` into the lib behind a `policy` feature
