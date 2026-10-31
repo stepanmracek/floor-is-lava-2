@@ -1,5 +1,6 @@
 UPDATES = 10000
 SEED = 42
+FINAL_POLICY = snapshots/reinforce-policy-10000.bpk
 EPISODE_SECONDS = 60.0
 DT 1.0 / 60.0
 GAMMA_PER_SECOND = 0.99

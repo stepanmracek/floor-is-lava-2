@@ -173,12 +173,16 @@ The same as REINFORCE, plus:
 - `(warm-up)` on lines from warm-up updates.
 
 Snapshots: `snapshots/actor-critic-policy-{update:05}.bpk` every 20 updates (policy only).
+Each run's update counter starts at 1, so the kept final snapshots were renamed by hand:
+`actor-critic-policy.bpk` (first run) and `actor-critic-policy2.bpk` (second run).
 
 ## Results
 
+### First run
+
 10 000 updates from `reinforce-policy-10000.bpk`, with the separate critic.
 Parameters are saved in `snapshots/actor-critic-params.txt` and the log in
-`snapshots/actor-critic-log.txt`.
+`snapshots/actor-critic-log.txt`. Final policy: `snapshots/actor-critic-policy.bpk`.
 
 | updates | margin (my − opp) | deaths | Up | no-ops | entropy | explained var | KL max |
 |---|---|---|---|---|---|---|---|
@@ -202,7 +206,36 @@ Parameters are saved in `snapshots/actor-critic-params.txt` and the log in
 - **Stable throughout:** no collapse, steady entropy, explained variance ~0.25.
 - **The learning rate was too cautious.** KL averaged 0.0002 with a maximum of 0.0014
   over the whole run, ~15× below the ~0.02 danger zone.
-- `snapshots/actor-critic-policy-10000.bpk` is the best policy so far.
+
+### Second run
+
+20 000 more updates from `actor-critic-policy.bpk` with the same parameters,
+including `FINE_TUNE_LEARNING_RATE` = 3e-4. The critic isn't saved, so it warmed up again.
+Parameters in `snapshots/actor-critic-params2.txt`, log in `snapshots/actor-critic-log2.txt`.
+Final policy: `snapshots/actor-critic-policy2.bpk`.
+
+| updates | margin (my − opp) | deaths | Up | explained var | KL max |
+|---|---|---|---|---|---|
+| 1–1000 (incl. warm-up) | +57.4 | 3.18 | 9.8 | 0.20 | 0.0009 |
+| 4001–5000 | +63.6 | 2.98 | 10.4 | 0.24 | 0.0014 |
+| 9001–10000 | +68.8 | 2.72 | 10.9 | 0.25 | 0.0015 |
+| 14001–15000 | +73.4 | 2.65 | 11.0 | 0.23 | 0.0015 |
+| 15001–16000 | +74.6 | 2.44 | 11.1 | 0.25 | 0.0008 |
+| 16001–17000 | +77.6 | 2.34 | 11.2 | 0.26 | 0.0009 |
+| 17001–18000 | +76.2 | 2.52 | 11.2 | 0.26 | 0.0008 |
+| 18001–19000 | +75.6 | 2.50 | 11.3 | 0.26 | 0.0009 |
+| 19001–20000 | **+76.8** | 2.56 | 11.3 | 0.26 | 0.0009 |
+
+- **The margin went from +57 to about +76,** ≈ 153 : 77 per minute.
+- **Plateau from ~16 000 updates on:** the gains slowed from ~+1.3 to ~+0.9 per 1000
+  updates and then stopped, while deaths levelled off at ~2.5 per minute. The margin
+  per update varies by about ±8, so a 1000-update average is good to about ±1.2.
+- **Decision: no further hyperparameter tuning against the simple AI.** Further gains
+  would mostly exploit that one opponent's weaknesses; the next step is other opponents
+  (see `todo.md`). A higher fine-tuning learning rate (KL max stayed at 0.0025) was not
+  tried.
+- `snapshots/actor-critic-policy2.bpk` is the best policy so far. Its export,
+  `actor-critic-policy2.safetensors`, is embedded in the 3D client as `ai-hard`.
 
 ## Usage
 
@@ -212,15 +245,14 @@ floor-is-lava-learn actor-critic <seed> [path/to/policy.bpk]
 
 ## Open issues / next steps
 
-- **Continue from `actor-critic-policy-10000.bpk` with a higher fine-tuning learning
-  rate** (e.g. 1e-3) while watching KL; step back to 5e-4 if KL climbs above ~0.01.
-  The margin was still rising, so this is the cheapest way to find the plateau.
-- **Before self-play:**
+- **Next: opponents other than the simple AI.** The roadmap and its order are in
+  `todo.md`:
+  - check how a red-trained snapshot plays as blue;
   - randomize the agent's colour;
-  - move to PPO (clipped updates), so changing opponents doesn't make the policy
-    forget;
-  - train against a pool of the simple AI plus frozen snapshots;
-  - track the win rate against fixed benchmark opponents.
+  - save the critic with the snapshots;
+  - evaluation against fixed benchmarks;
+  - an opponent pool of frozen snapshots plus the simple AI;
+  - PPO if KL spikes or the evaluation shows forgetting.
 - **Duplicated code:**
   - the rollout loop is duplicated between `reinforce.rs` and `actor_critic.rs`, a
     candidate for a shared function if both are kept;

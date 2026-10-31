@@ -31,7 +31,7 @@ async fn main() {
     let arg = std::env::args().nth(1);
 
     const HARD_AI_POLICY: &[u8] =
-        include_bytes!("../../floor-is-lava-learn/snapshots/actor-critic-policy-10000.safetensors");
+        include_bytes!("../../floor-is-lava-learn/snapshots/actor-critic-policy2.safetensors");
 
     let mut red_ctrl: Box<dyn Controller> = match arg.as_deref() {
         None => Box::new(KeyboardController::wasd(&keyboard_state)),

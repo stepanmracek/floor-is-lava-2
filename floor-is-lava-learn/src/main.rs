@@ -12,7 +12,7 @@ fn main() {
         "reinforce" => reinforce::train(10_000, args[2].parse().unwrap()),
         "actor-critic" => actor_critic::train(
             args.get(3).map(String::as_str),
-            10_000,
+            50_000,
             args[2].parse().unwrap(),
         ),
         "export" => policy::export(&args[2], &args[3]),
