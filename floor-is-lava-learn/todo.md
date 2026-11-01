@@ -3,9 +3,9 @@
 Decisions and results behind the done items are in `adr-reinforce.md`,
 `adr-actor_critic.md` and `adr-policy-deployment.md`.
 
-Order: **0. mirror the board for blue → 1. egocentric observation (if corner deaths
-justify it) → 2. training against older snapshots → 3. CNN → 4. procedural level
-generation.**
+Order: **0. mirror the board for blue (tried, reverted) → 1. egocentric observation,
+training as both colours → 2. training against older snapshots → 3. CNN → 4.
+procedural level generation.**
 
 ## Done
 
@@ -63,37 +63,34 @@ random player order. So blue can play as if it were red in a mirrored world, whi
 gives existing snapshots full strength as blue **without retraining**. It's exact, not
 an approximation, because the rules themselves are symmetric.
 
-- [ ] In `floor_is_lava_policy`, when `me` is blue:
+- [x] In `floor_is_lava_policy`, when `me` is blue:
   - `observation` reads the columns in reverse order (x → −x);
   - the action is mirrored: Left ↔ Right (Up, Down, None unchanged).
 
   Both belong to the shared crate, so `PolicyController`, training rollouts and future
   snapshot opponents all get them.
-- [ ] **Verify with the headless test** (same snapshot on both sides, 200 seeds of 60 s):
-  red's win rate should drop from the 74% baseline to ~50%, and the margin from +26.0
-  to ~0. Same seed (42), so the comparison is direct.
-- [ ] Re-export nothing: the snapshots stay the same, only the encoding for blue changes.
-  Update `adr-policy-deployment.md` (the agent can now play either colour).
+- [x] **Verify with the headless test** (`actor-critic-policy2` on both sides, 200 seeds
+  of 60 s, seed 42):
+  - red wins 104, blue 93, 3 draws (**52% for red**, was 74%);
+  - average margin **+0.6 for red** (was +26.0).
 
-Consequences:
+  As predicted: mirrored, the red-trained snapshot plays blue at full strength.
+- [x] **Reverted, not kept.** Mirroring ties the encoding to the current start positions
+  (−2 / +2) and their symmetry, which shouldn't be wired into the policy. The experiment
+  only confirms that the colour gap is the opening learned for x = −2, nothing else.
 
-- **Colour randomization in training becomes unnecessary:** the agent can keep
-  training as red, and blue players use the mirrored view.
-- **Existing snapshots can be opponents at full strength,** so step 2 no longer depends
-  on step 1.
+**Decision:** solve the colour problem in step 1 instead: egocentric observation, and
+training runs for both colours (red and blue), so the policy learns both openings
+itself. Until then, existing snapshots stay weak as blue.
 
 ## 1. Egocentric observation
 
-With mirroring solving the colour problem, **the remaining reason is the corner
-weakness.** Egocentric means retraining from scratch, so measure first.
+Chosen over mirroring (step 0), together with training as both colours. Do it before
+step 2, because every snapshot is tied to its observation encoding and changing it
+after self-play would throw that training away.
 
-- [ ] **Measure corner deaths first:** the death classification from the evaluation
-  harness below, run on `actor-critic-policy2` in the headless setup.
-  - Corner deaths a big share of all deaths: egocentric is justified; do it before
-    step 2, because every snapshot is tied to its observation encoding and changing it
-    after self-play would throw that training away.
-  - Corner deaths rare: go straight to step 2 with the existing snapshots, and keep
-    egocentric for later.
+- [ ] **Measure corner deaths** on `actor-critic-policy2` in the headless setup (death
+  classification from the evaluation harness below), as the baseline for the comparison.
 
 **Expected benefit:** translation invariance. "Void above me, a block to my left" looks
 the same anywhere on the board, so experience from the middle transfers to the rare
@@ -112,7 +109,10 @@ corner situations.
   - height stays visible through `distance_from_lava` per cell;
   - keep the layout `[rows][columns][features]` in a known order, so the same vector
     can be reshaped to `[features, rows, columns]` for step 3 (CNN);
-  - for blue, mirror the window the same way as in step 0.
+  - no mirroring for blue: the colour only decides which channels are "mine".
+- [ ] **Train as both colours:** pick the agent's colour per episode (half red, half
+  blue), so it learns the opening from both start positions. Check with the headless
+  colour test: ~50% / margin ~0 with the same snapshot on both sides.
 - [ ] **Save the critic alongside the policy snapshots,** and load it on restart. Each
   restart currently costs the 200-update warm-up (explained variance starts at ~0.1
   instead of ~0.25).
@@ -150,13 +150,9 @@ existing safeguards cover most of what PPO would provide at first:
 - the learning rate is cautious (KL max 0.0025);
 - the simple AI stays in the pool against forgetting.
 
-Which snapshots can be opponents depends on step 1:
-
-- **Egocentric done:** snapshots with the old (absolute) encoding can't be opponents
-  unless the encoding is versioned. Simpler: the pool starts with the simple AI and the
-  new egocentric snapshots only.
-- **Egocentric skipped:** the existing snapshots, playing blue through the mirrored view
-  from step 0.
+Snapshots with the old (absolute) encoding can't be opponents unless the encoding is
+versioned, and they are weak as blue anyway (step 0). Simpler: the pool starts with the
+simple AI and the new egocentric snapshots only.
 
 **Tasks:**
 
@@ -229,7 +225,7 @@ escapability, not just connectivity.**
   - A block that can still escape never becomes a dead end; a player dies only by
     wasting time or jumping into a hole.
   - Keep the repair choices uniformly random so the board stays left-right symmetric in
-    distribution (step 0 relies on that).
+    distribution (the colours stay equal).
   - The 0.7 density becomes a difficulty knob: sparser, more maze-like boards stay fair.
 - [ ] **Separate `level_rng`** for rows and points; the existing `rng` keeps player order
   and respawns. A seed is then a level, independent of how the game goes, so headless
