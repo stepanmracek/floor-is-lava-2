@@ -4,7 +4,8 @@ Decisions and results behind the done items are in `adr-reinforce.md`,
 `adr-actor_critic.md` and `adr-policy-deployment.md`.
 
 Order: **0. mirror the board for blue → 1. egocentric observation (if corner deaths
-justify it) → 2. training against older snapshots → 3. CNN.**
+justify it) → 2. training against older snapshots → 3. CNN → 4. procedural level
+generation.**
 
 ## Done
 
@@ -204,6 +205,38 @@ encoding and the architecture at once would make it impossible to tell which hel
   Extend the burn-vs-plain tests and the SafeTensors export (`conv1.weight`, …).
 - [ ] If the architecture keeps growing, reconsider ONNX with `tract` instead of
   hand-written inference (see `adr-policy-deployment.md`).
+
+## 4. Procedural level generation
+
+New rows are random today (each column 0.7, one guaranteed block), so some blocks are
+dead ends: no way up, and the player dies through no fault of their own. Simulated
+per new row: 17.9% contain a segment with no block above it, 0.28% can't be reached
+from the row below at all.
+
+Holes between rows are fine as long as every block can still reach the top: columns
+hanging from a row above, U-turns through lower rows. But lower rows sink, so a U-turn
+is only safe if the player can finish it before the lava gets there. **The invariant is
+escapability, not just connectivity.**
+
+- [ ] **Row-by-row generation like Eller's maze algorithm, with timing:**
+  - generate a candidate row `y+1` randomly;
+  - for every block `b`, find the top-row cells reachable in time (BFS over jump
+    count; the lava at landing after k jumps is `lava + k · JUMP_DURATION ·
+    LAVA_SPEED`);
+  - repair: every block that can reach the top row in time needs a block above at
+    least one of its reachable top-row cells; otherwise add one at a random column
+    among them.
+  - A block that can still escape never becomes a dead end; a player dies only by
+    wasting time or jumping into a hole.
+  - Keep the repair choices uniformly random so the board stays left-right symmetric in
+    distribution (step 0 relies on that).
+  - The 0.7 density becomes a difficulty knob: sparser, more maze-like boards stay fair.
+- [ ] **Separate `level_rng`** for rows and points; the existing `rng` keeps player order
+  and respawns. A seed is then a level, independent of how the game goes, so headless
+  evaluations compare policies on the same towers.
+- [ ] **Re-measure** the existing policies headlessly before and after: the observation
+  doesn't change, but the boards do (and existing seeds give different towers), so
+  numbers before and after aren't comparable seed by seed. Fine-tune if needed.
 
 ## Smaller items
 
