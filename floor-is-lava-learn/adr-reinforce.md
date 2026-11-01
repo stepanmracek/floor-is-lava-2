@@ -69,8 +69,8 @@ Justification:
   softmax only for sampling.
 - **5 actions: Up, Down, Left, Right, None.** Staying still is a valid move and has to
   be a choice the policy can make.
-- `Policy::to_plain()` copies the weights into a `PlainPolicy`, a plain-Rust MLP from
-  `floor-is-lava-policy`, for fast inference (see *Performance*).
+- `Policy::to_plain()` copies the weights into an `Mlp` (originally `PlainPolicy`), a
+  plain-Rust MLP from `floor-is-lava-policy`, for fast inference (see *Performance*).
   - burn's `Linear` stores the weight row-major as `[d_input, d_output]`, so the plain
     forward pass computes `input · weight + bias`.
   - A test (`plain_policy_matches_burn`) checks the plain logits against burn's

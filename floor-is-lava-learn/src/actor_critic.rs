@@ -3,7 +3,7 @@ use burn::optim::{AdamConfig, GradientsParams, ModuleOptimizer};
 use burn::prelude::*;
 use burn::tensor::activation::log_softmax;
 use floor_is_lava_lib::{Clock, Controller, Game, PlayerColor, PlayerState, SimpleAiController};
-use floor_is_lava_policy::{INPUTS, PlainPolicy, observation, sample};
+use floor_is_lava_policy::{INPUTS, Mlp, observation, sample};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 use rayon::prelude::*;
 
@@ -56,8 +56,8 @@ impl Critic {
 
     /// Plain-Rust copy for the rollouts. It has the same shape as the policy network,
     /// only with a single output, so the value is `logits(observation)[0]`.
-    fn to_plain(&self) -> PlainPolicy {
-        PlainPolicy {
+    fn to_plain(&self) -> Mlp {
+        Mlp {
             hidden1: plain_layer(&self.hidden1),
             hidden2: plain_layer(&self.hidden2),
             output: plain_layer(&self.output),
@@ -117,12 +117,7 @@ fn discounted_returns(rewards: &[f32], bootstrap: f32) -> Vec<f32> {
 
 /// Plays one episode as red against the simple AI.
 /// `game_seed` seeds the game, `rng_seed` the sampling of actions.
-fn play_episode(
-    policy: &PlainPolicy,
-    critic: &PlainPolicy,
-    game_seed: u64,
-    rng_seed: u64,
-) -> Episode {
+fn play_episode(policy: &Mlp, critic: &Mlp, game_seed: u64, rng_seed: u64) -> Episode {
     let mut game = Game::with_seed(game_seed);
     let mut rng = StdRng::seed_from_u64(rng_seed);
     let mut clock = Clock::fixed(DT);
@@ -303,7 +298,7 @@ fn train_critic(
 /// `(r - 1) - ln r` with `r = π_new(a|s) / π_old(a|s)`, which is always ≥ 0.
 ///
 /// Measures how far one update moved the policy; values above ~0.02 mean it moves fast.
-fn approx_kl(policy: &PlainPolicy, episodes: &[Episode]) -> f32 {
+fn approx_kl(policy: &Mlp, episodes: &[Episode]) -> f32 {
     let (sum, count) = episodes
         .par_iter()
         .map(|episode| {

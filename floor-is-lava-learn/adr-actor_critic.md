@@ -39,7 +39,7 @@ observation (168) → Critic: 128 (ReLU) → 128 (ReLU) → 1 value (no activati
   - Snapshots save only `model.policy`, so policy files stay interchangeable between
     the two algorithms and with whatever plays the game.
 - `Critic::to_plain()` gives a plain-Rust copy for the rollouts, used for the
-  bootstrap value only. It reuses `PlainPolicy`, which has the same shape with a single
+  bootstrap value only. It reuses `Mlp`, which has the same shape with a single
   output, so the value is `logits(observation)[0]`.
 
 **History: a shared trunk with a linear value head was tried first and abandoned.**
@@ -256,5 +256,6 @@ floor-is-lava-learn actor-critic <seed> [path/to/policy.bpk]
 - **Duplicated code:**
   - the rollout loop is duplicated between `reinforce.rs` and `actor_critic.rs`, a
     candidate for a shared function if both are kept;
-  - the critic reuses `PlainPolicy` for its plain-Rust copy. A neutral `PlainMlp`
-    name in the shared crate would read better.
+  - the critic reuses the policy's plain-Rust MLP for its copy. Resolved: it was
+    renamed from `PlainPolicy` to the neutral `Mlp`, which takes its number of outputs
+    from the file.

@@ -8,7 +8,7 @@
 | `floor-is-lava-3d` | playable 3D client (kiss3d); red: keyboard / `ai-easy` (simple AI) / `ai-hard` (learned policy, embedded) |
 | `floor-is-lava-headless` | runs games without graphics; currently policy-against-policy evaluation over 200 seeded games |
 | `floor-is-lava-learn` | RL training with burn: REINFORCE, actor-critic, export |
-| `floor-is-lava-policy` | burn-free observation encoding, plain-Rust policy, SafeTensors I/O, `PolicyController` (seeded) |
+| `floor-is-lava-policy` | burn-free observation encoding, plain-Rust MLP (`Mlp`), SafeTensors I/O, `PolicyController` (seeded) |
 
 ## Documentation
 

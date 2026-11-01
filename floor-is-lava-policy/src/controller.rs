@@ -3,28 +3,40 @@ use std::{error::Error, path::Path};
 use floor_is_lava_lib::{Cells, Controller, PlayerAction, PlayerColor};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 
-use crate::{ACTIONS, PlainPolicy, observation};
+use crate::{Mlp, observation};
+
+pub const ACTIONS: [Option<PlayerAction>; 5] = [
+    Some(PlayerAction::Up),
+    Some(PlayerAction::Down),
+    Some(PlayerAction::Left),
+    Some(PlayerAction::Right),
+    None,
+];
 
 /// Plays with a policy trained in `floor-is-lava-learn` and exported to SafeTensors
 /// (`floor-is-lava-learn export <policy.bpk> <policy.safetensors>`).
 pub struct PolicyController {
-    policy: PlainPolicy,
+    policy: Mlp,
     color: PlayerColor,
     rng: StdRng,
 }
 
 impl PolicyController {
     pub fn from_path(path: &Path, color: PlayerColor, seed: u64) -> Result<Self, Box<dyn Error>> {
-        Ok(Self {
-            policy: PlainPolicy::load(path)?,
-            color,
-            rng: StdRng::seed_from_u64(seed),
-        })
+        Self::new(Mlp::load(path)?, color, seed)
     }
 
     pub fn from_bytes(bytes: &[u8], color: PlayerColor, seed: u64) -> Result<Self, Box<dyn Error>> {
+        Self::new(Mlp::from_bytes(bytes)?, color, seed)
+    }
+
+    fn new(policy: Mlp, color: PlayerColor, seed: u64) -> Result<Self, Box<dyn Error>> {
+        let outputs = policy.output.bias.len();
+        if outputs != ACTIONS.len() {
+            return Err(format!("policy has {outputs} outputs, expected {}", ACTIONS.len()).into());
+        }
         Ok(Self {
-            policy: PlainPolicy::from_bytes(bytes)?,
+            policy,
             color,
             rng: StdRng::seed_from_u64(seed),
         })

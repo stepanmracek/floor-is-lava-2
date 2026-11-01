@@ -2,8 +2,9 @@
 
 Implementation:
 
-- `floor-is-lava-policy`: observation, plain-Rust MLP, SafeTensors save/load, and
-  `PolicyController` (`src/controller.rs`);
+- `floor-is-lava-policy`: observation (`src/observation.rs`), plain-Rust MLP with
+  SafeTensors save/load (`src/mlp.rs`), and `PolicyController` with the action table
+  (`src/controller.rs`);
 - `policy::export` in `floor-is-lava-learn`.
 
 Users of `PolicyController`:
@@ -25,9 +26,13 @@ linking burn into anything but the training.
 - **`observation(cells, me) -> Vec<f32>` is the single source of truth** for the
   encoding. Training and the game must use exactly the same encoding: any difference
   silently breaks a trained agent, and the features have changed several times.
-- **`INPUTS`, `HIDDEN` and `ACTIONS`** (index → `Option<PlayerAction>`) live there too.
-- **`PlainPolicy` / `Layer`** is a plain-Rust MLP: three dense layers with ReLU,
-  softmax and sampling.
+- **`INPUTS`, `HIDDEN` and `ACTIONS`** (index → `Option<PlayerAction>`) live there too,
+  each next to what it describes: `INPUTS` with the observation, `HIDDEN` with the MLP,
+  `ACTIONS` with the controller.
+- **`Mlp` / `Layer`** is a plain-Rust MLP: three dense layers with ReLU, softmax and
+  sampling.
+  - Neutral about its output: `ACTIONS` logits for the policy, a single value for the
+    critic (see `adr-actor_critic.md`).
   - `sample_action(observation, uniform)` takes the random number as a parameter, so
     callers decide where randomness comes from: the training rollouts use their
     per-episode rng, `PolicyController` its own seeded rng.
@@ -64,17 +69,18 @@ with `PolicyController` next to `SimpleAiController`.
 - **Not ONNX:** burn 0.22 can't export ONNX (its ONNX support is import only), and an
   ONNX runtime in the game (`tract-onnx`, `ort`) is a lot of machinery for a 3-layer MLP.
 - **Not burn's own SafeTensors adapter:** writing the file ourselves makes the tensor
-  names and the weight layout match `PlainPolicy` exactly. It doesn't depend on how
+  names and the weight layout match `Mlp` exactly. It doesn't depend on how
   burn names tensors or whether it transposes `Linear` weights to PyTorch's layout.
 - **Format,** all F32 little-endian:
   - `{layer}.weight` with shape `[inputs, outputs]` (row-major);
   - `{layer}.bias` with shape `[outputs]`;
   - layers `hidden1`, `hidden2`, `output`.
-- **`PlainPolicy::from_bytes` / `load` validate** every tensor's dtype and shape against
-  `INPUTS`, `HIDDEN` and `ACTIONS`. A file from an older network or observation layout
-  fails with a clear error instead of playing garbage.
+- **`Mlp::from_bytes` / `load` validate** every tensor's dtype and shape against
+  `INPUTS` and `HIDDEN`; the number of outputs is taken from `output.bias`.
+  `PolicyController` then checks that it equals `ACTIONS.len()`. A file from an older
+  network or observation layout fails with a clear error instead of playing garbage.
 - **Trade-off:** the network's architecture is defined twice, once in burn's `Policy` and
-  once in `PlainPolicy`. For a small MLP the duplication is a few lines and the
+  once in `Mlp`. For a small MLP the duplication is a few lines and the
   round-trip test catches any mismatch. If the architecture grows (convolutions,
   attention), ONNX becomes worth reconsidering.
 

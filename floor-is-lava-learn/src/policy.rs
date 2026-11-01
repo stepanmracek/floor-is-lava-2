@@ -1,6 +1,6 @@
 use burn::nn::{Linear, LinearConfig, Relu};
 use burn::prelude::*;
-use floor_is_lava_policy::{Layer, PlainPolicy};
+use floor_is_lava_policy::{Layer, Mlp};
 
 pub use floor_is_lava_policy::{ACTIONS, HIDDEN, INPUTS};
 
@@ -39,8 +39,8 @@ impl Policy {
     }
 
     /// Copy of the weights for fast inference without burn.
-    pub fn to_plain(&self) -> PlainPolicy {
-        PlainPolicy {
+    pub fn to_plain(&self) -> Mlp {
+        Mlp {
             hidden1: plain_layer(&self.hidden1),
             hidden2: plain_layer(&self.hidden2),
             output: plain_layer(&self.output),
@@ -87,7 +87,7 @@ mod tests {
             .collect()
     }
 
-    fn assert_matches_burn(policy: &Policy, plain: &PlainPolicy) {
+    fn assert_matches_burn(policy: &Policy, plain: &Mlp) {
         let observation = test_observation();
         let input = Tensor::<1>::from_data(observation.as_slice(), &Device::default()).unsqueeze();
         let expected = policy.forward(input).try_into_vec_as::<f32>().unwrap();
@@ -117,7 +117,7 @@ mod tests {
         let policy = Policy::new(&Device::default());
         policy.clone().save_file(&snapshot).unwrap();
         export(snapshot.to_str().unwrap(), exported.to_str().unwrap());
-        let loaded = PlainPolicy::load(&exported).unwrap();
+        let loaded = Mlp::load(&exported).unwrap();
         std::fs::remove_dir_all(&dir).unwrap();
 
         assert_matches_burn(&policy, &loaded);

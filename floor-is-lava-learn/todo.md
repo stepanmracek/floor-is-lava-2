@@ -171,8 +171,8 @@ simple AI and the new egocentric snapshots only.
       used by the 3D client and headless), seeded from the episode's seeds with an offset
       from the agent's sampling seed, so the two players don't draw correlated random
       numbers;
-    - snapshots are loaded into `PlainPolicy` once, when the pool changes, not per
-      episode. `PolicyController` owns its `PlainPolicy`, so sharing one loaded snapshot
+    - snapshots are loaded into `Mlp` once, when the pool changes, not per
+      episode. `PolicyController` owns its `Mlp`, so sharing one loaded snapshot
       between parallel episodes needs a small change, e.g. holding it in an `Arc`.
 - [ ] **PPO** (clipped probability ratio, several epochs per batch), if KL spikes or the
   evaluation shows forgetting.
@@ -241,7 +241,8 @@ escapability, not just connectivity.**
 - [ ] Difficulty levels for the 3D client: per-decision mixing with the simple AI (drawn
   when the player becomes idle, not per tick), and/or reaction delay. Measure the win
   rate curve over the setting.
-- [ ] Rename `PlainPolicy` to a neutral `PlainMlp`; the critic reuses it with one output
+- [x] Rename `PlainPolicy` to a neutral `Mlp`; the critic reuses it with one output.
+  The policy crate is split into `observation.rs`, `mlp.rs` and `controller.rs`.
 - [ ] Share the rollout loop between `reinforce.rs` and `actor_critic.rs` if both stay
 - [ ] Maybe: merge `floor-is-lava-policy` into the lib behind a `policy` feature
 - [ ] Maybe: GAE / TD(λ) instead of Monte Carlo returns, if the critic gets good enough

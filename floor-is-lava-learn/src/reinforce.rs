@@ -2,7 +2,7 @@ use burn::optim::{AdamConfig, GradientsParams};
 use burn::prelude::*;
 use burn::tensor::activation::log_softmax;
 use floor_is_lava_lib::{Clock, Controller, Game, PlayerColor, PlayerState, SimpleAiController};
-use floor_is_lava_policy::{PlainPolicy, observation};
+use floor_is_lava_policy::{Mlp, observation};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 use rayon::prelude::*;
 
@@ -44,7 +44,7 @@ fn discounted_returns(rewards: &[f32]) -> Vec<f32> {
 
 /// Plays one episode as red against the simple AI.
 /// `game_seed` seeds the game, `rng_seed` the sampling of actions.
-fn play_episode(policy: &PlainPolicy, game_seed: u64, rng_seed: u64) -> Episode {
+fn play_episode(policy: &Mlp, game_seed: u64, rng_seed: u64) -> Episode {
     let mut game = Game::with_seed(game_seed);
     let mut rng = StdRng::seed_from_u64(rng_seed);
     let mut clock = Clock::fixed(DT);
