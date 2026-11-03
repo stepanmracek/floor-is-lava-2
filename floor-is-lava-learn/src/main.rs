@@ -1,4 +1,5 @@
 mod actor_critic;
+mod helpers;
 mod policy;
 mod reinforce;
 

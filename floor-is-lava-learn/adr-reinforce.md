@@ -223,6 +223,11 @@ Opponent: `SimpleAiController` playing blue. The agent always plays red.
 - **It plateaued** at +21–22 for the last ~2000 updates, while entropy kept falling.
   The policy kept becoming more deterministic without getting better.
 - `snapshots/reinforce-policy-10000.bpk` is the starting point of the actor-critic.
+- **No longer loadable with the current code.** The absolute observation (168 inputs)
+  was replaced by the egocentric one (455 inputs) and removed, so this snapshot, like
+  every snapshot and export trained on the absolute observation, fails to load with a
+  shape error. Commit `78f73b0` is the last one that loads them. The log and the params
+  file stay as the record of this run.
 
 ## Open issues / next steps
 

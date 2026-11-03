@@ -241,6 +241,7 @@ impl Game {
             game.spawn_block(ivec2(x, 0));
         }
 
+        game.update_cells(0.0);
         game
     }
 

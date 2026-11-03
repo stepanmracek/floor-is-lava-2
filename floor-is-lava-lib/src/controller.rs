@@ -16,7 +16,7 @@ impl SimpleAiController {
     }
 }
 
-fn find_player(cells: &Cells, player_color: PlayerColor) -> Option<(&Cell, IVec2)> {
+pub fn find_player(cells: &Cells, player_color: PlayerColor) -> Option<(&Cell, IVec2)> {
     for (y, row) in cells.iter().enumerate() {
         for (x, cell) in row.iter().enumerate() {
             if let Some(cell) = cell
@@ -29,7 +29,7 @@ fn find_player(cells: &Cells, player_color: PlayerColor) -> Option<(&Cell, IVec2
     None
 }
 
-fn get_cell(cells: &Cells, pos: IVec2) -> Option<&Cell> {
+pub fn get_cell(cells: &Cells, pos: IVec2) -> Option<&Cell> {
     let row = usize::try_from(pos.y).ok()?;
     let col = usize::try_from(pos.x).ok()?;
     cells.get(row)?.get(col)?.as_ref()
