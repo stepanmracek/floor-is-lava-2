@@ -3,8 +3,6 @@ use std::path::Path;
 
 use safetensors::{Dtype, SafeTensors, tensor::TensorView};
 
-use crate::INPUTS;
-
 pub const HIDDEN: usize = 128;
 
 /// Fully connected layer `output = input · weight + bias`.
@@ -132,12 +130,18 @@ impl Mlp {
             })
         };
 
+        let inputs = match tensors.tensor("hidden1.weight")?.shape() {
+            [inputs, _] => *inputs,
+            shape => {
+                return Err(format!("tensor hidden1.weight: expected 2-D, got {shape:?}").into());
+            }
+        };
         let outputs = match tensors.tensor("output.bias")?.shape() {
             [outputs] => *outputs,
             shape => return Err(format!("tensor output.bias: expected 1-D, got {shape:?}").into()),
         };
         Ok(Self {
-            hidden1: layer("hidden1", INPUTS, HIDDEN)?,
+            hidden1: layer("hidden1", inputs, HIDDEN)?,
             hidden2: layer("hidden2", HIDDEN, HIDDEN)?,
             output: layer("output", HIDDEN, outputs)?,
         })

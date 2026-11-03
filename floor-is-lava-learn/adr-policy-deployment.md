@@ -114,8 +114,13 @@ and maps it through `ACTIONS`.**
 ## In the 3D client
 
 - **The model is embedded in the binary** with `include_bytes!`
-  (`snapshots/actor-critic-policy2.safetensors`), so `ai-hard` can't fail to find its
-  file and doesn't depend on the working directory. The original relative-path version
+  (originally `snapshots/actor-critic-policy2.safetensors`, now
+  `snapshots/reinforce-ec-policy2-10000.safetensors`), so `ai-hard` can't fail to find
+  its file and doesn't depend on the working directory.
+  - Models trained on the absolute observation (168 inputs), including
+    `actor-critic-policy2`, no longer load since the egocentric observation replaced
+    it; `PolicyController` rejects them with a clear error. Commit `78f73b0` is the last
+    one that loads them. The original relative-path version
   broke when started from the workspace root.
 - **The controller's seed is fixed (42).** The board (`Game::new()`) and the human's
   input differ every game, so games don't repeat, but the AI's random sequence starts

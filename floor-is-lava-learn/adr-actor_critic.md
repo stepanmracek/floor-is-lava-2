@@ -236,6 +236,12 @@ Final policy: `snapshots/actor-critic-policy2.bpk`.
   tried.
 - `snapshots/actor-critic-policy2.bpk` is the best policy so far. Its export,
   `actor-critic-policy2.safetensors`, is embedded in the 3D client as `ai-hard`.
+- **No longer loadable with the current code.** Both runs used the absolute observation
+  (168 inputs), which was replaced by the egocentric one (455 inputs) and removed.
+  `actor-critic-policy.bpk`, `actor-critic-policy2.bpk` and their `.safetensors`
+  exports fail to load with a shape error; commit `78f73b0` is the last one that loads
+  them. `ai-hard` no longer embeds `actor-critic-policy2`. The logs and params files
+  stay as the record of these runs.
 
 ## Usage
 

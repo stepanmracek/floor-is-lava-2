@@ -89,8 +89,12 @@ Chosen over mirroring (step 0), together with training as both colours. Do it be
 step 2, because every snapshot is tied to its observation encoding and changing it
 after self-play would throw that training away.
 
-- [ ] **Measure corner deaths** on `actor-critic-policy2` in the headless setup (death
-  classification from the evaluation harness below), as the baseline for the comparison.
+- [x] **Dropped: measure corner deaths** on `actor-critic-policy2` in the headless setup
+  (death classification from the evaluation harness below), as the baseline for the
+  comparison.
+  - Not measured. Deaths overall fell from 4.3 to ~1.5 per minute with the egocentric
+    observation (REINFORCE plateaus), and in the 3D client the egocentric policy shows
+    no visible weakness in the corners. Corner deaths specifically weren't counted.
 
 **Expected benefit:** translation invariance. "Void above me, a block to my left" looks
 the same anywhere on the board, so experience from the middle transfers to the rare
@@ -98,7 +102,7 @@ corner situations.
 
 **Tasks:**
 
-- [ ] **New encoding in `floor_is_lava_policy::observation`,** centred on the player:
+- [x] **New encoding in `floor_is_lava_policy::observation`,** centred on the player:
   - the window covers the whole board from any position: columns −6 … +6 (13),
     rows −3 … +3 (7);
   - cells outside the board are encoded like a missing block (points −1, everything else
@@ -110,20 +114,61 @@ corner situations.
   - keep the layout `[rows][columns][features]` in a known order, so the same vector
     can be reshaped to `[features, rows, columns]` for step 3 (CNN);
   - no mirroring for blue: the colour only decides which channels are "mine".
-- [ ] **Train as both colours:** pick the agent's colour per episode (half red, half
+
+  Done as `observation_egocentric` (455 inputs, `None` while the player is off the
+  board). Void stays −1 in `points`; all zeros, with or without a "block present" flag,
+  was considered and not taken.
+- [x] **Train as both colours:** pick the agent's colour per episode (half red, half
   blue), so it learns the opening from both start positions. Check with the headless
   colour test: ~50% / margin ~0 with the same snapshot on both sides.
-- [ ] **Save the critic alongside the policy snapshots,** and load it on restart. Each
-  restart currently costs the 200-update warm-up (explained variance starts at ~0.1
-  instead of ~0.25).
+  - Done in `reinforce.rs` and `actor_critic.rs`. Same plateau as blue only (+80.1 vs
+    +80.8); against the simple AI equal from both sides (+76.2 as red, +77.2 as blue;
+    blue only: +82.7 / +65.8).
+  - Self-play gap +19.9 (blue only, 400 games) → **+6.3, 55.7% for red** (2000 games).
+    Not ~0 yet; likely cause is the simple AI's tie-break (next item).
+- [ ] **Random tie-break in `SimpleAiController`:** among the plausible moves with the
+  highest value, choose one at random, from a seeded rng (`SimpleAiController::new(color,
+  seed)`).
+  - Today `max_by_key` returns the last maximum, so ties go Right > Left > Down > Up.
+    Red at x = −2 drifts towards the centre and the opponent, blue at x = 2 towards its
+    edge: simple AI against itself gives red 220 : 178 (55%), margin **+9.5** over 400
+    games, while a uniformly random player against itself gives +0.3 over 2000, so the
+    game itself is symmetric.
+  - A fixed tie-break order is also a pattern the agent can learn to exploit. Likely
+    cause of the residual self-play gap of the egocentric policy trained as both colours
+    (55.7% / +6.3 for red over 2000 games): it learned to counter an opponent that
+    drifts right.
+  - Seeds: training from the episode's seeds with an offset from the agent's sampling
+    seed; headless from the game seed; the 3D client (`ai-easy`) any.
+  - Check: simple AI against itself, 2000 games, ~50% / margin ~0. Then retrain (or
+    continue actor-critic) against it and re-run the self-play colour test.
+  - The opponent changes, so margins against the simple AI aren't comparable with older
+    logs; note it in the params files.
+- [x] **Dropped: save the critic alongside the policy snapshots,** and load it on
+  restart. Each restart currently costs the 200-update warm-up (explained variance
+  starts at ~0.1 instead of ~0.25).
+  - Not worth it: the warm-up costs ~1.5 min (200 × ~0.45 s), and the critic doesn't
+    keep improving anyway. In the egocentric actor-critic run explained variance fell
+    from ~0.31 (warm-up) to ~0.20 and stayed there, so a saved critic isn't much better
+    than a freshly warmed-up one.
 - [ ] **Run name in the snapshot path,** e.g. `snapshots/<run>/policy-{update:05}.bpk`.
   Each run's counter starts at 1, so a continued run overwrites the previous run's
   snapshots; final snapshots are currently renamed by hand.
-- [ ] **Retrain from scratch:** the existing snapshots can't be converted. Roughly
+- [x] **Retrain from scratch:** the existing snapshots can't be converted. Roughly
   REINFORCE 10 000 updates (~30 min) plus actor-critic ~30 000 (~4 h); possibly
   actor-critic directly from a random policy.
-- [ ] **Re-export `ai-hard`;** `PolicyController` follows the new observation
+  - REINFORCE, both colours, 10 000 updates (`reinforce-ec-params2.txt`): margin 0 at
+    update ~360 (absolute: ~5500), plateau **+80** (absolute: +21), deaths 1.5 (4.3).
+  - Actor-critic from it, 4120 updates (`actor-critic-params3.txt`), final
+    `actor-critic-ec-policy3-04000.bpk`: training margin +77 → ~+92 by update ~1000,
+    then flat. Head-to-head against the REINFORCE policy, both colour arrangements, 200
+    games each: **72.5% wins, margin +25.2** (snapshot 1780: 63.4% / +13.3), so it kept
+    improving after the training margin went flat.
+- [x] **Re-export `ai-hard`;** `PolicyController` follows the new observation
   automatically through the shared crate.
+  - Now embeds `reinforce-ec-policy2-10000.safetensors`; `PolicyController` picks the
+    encoding from the model's input size. Candidate for an update to
+    `actor-critic-ec-policy3-04000`.
 
 **Evaluation harness** (needed from here on; apart from the headless colour test, all
 numbers so far come from training rollouts: a sampling policy, always red, against the

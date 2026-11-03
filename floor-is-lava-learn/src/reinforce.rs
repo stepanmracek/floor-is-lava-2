@@ -6,6 +6,7 @@ use floor_is_lava_policy::{Mlp, observation};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 use rayon::prelude::*;
 
+use crate::helpers::{opponent, player};
 use crate::policy::{ACTIONS, Policy};
 
 const EPISODE_SECONDS: f32 = 60.0;
@@ -42,13 +43,20 @@ fn discounted_returns(rewards: &[f32]) -> Vec<f32> {
     returns
 }
 
-/// Plays one episode as red against the simple AI.
+/// Plays one episode against the simple AI.
 /// `game_seed` seeds the game, `rng_seed` the sampling of actions.
 fn play_episode(policy: &Mlp, game_seed: u64, rng_seed: u64) -> Episode {
     let mut game = Game::with_seed(game_seed);
     let mut rng = StdRng::seed_from_u64(rng_seed);
     let mut clock = Clock::fixed(DT);
-    let mut opponent = SimpleAiController::new(PlayerColor::Blue);
+
+    let my_color = if rng.random() {
+        PlayerColor::Red
+    } else {
+        PlayerColor::Blue
+    };
+    let opponent_color = opponent(my_color);
+    let mut opponent_ai = SimpleAiController::new(opponent_color);
 
     let mut observations = vec![];
     let mut actions = vec![];
@@ -59,8 +67,8 @@ fn play_episode(policy: &Mlp, game_seed: u64, rng_seed: u64) -> Episode {
 
     let ticks = (EPISODE_SECONDS / DT) as usize;
     for tick in 0..ticks {
-        let my_action = if matches!(game.red_player.state, PlayerState::Idle(_)) {
-            let observation = observation(game.cells(), PlayerColor::Red);
+        let my_action = if matches!(player(&game, my_color).state, PlayerState::Idle(_)) {
+            let observation = observation(game.cells(), my_color).unwrap();
             let action = policy.sample_action(&observation, rng.random());
             observations.extend(observation);
             actions.push(action as i64);
@@ -70,18 +78,23 @@ fn play_episode(policy: &Mlp, game_seed: u64, rng_seed: u64) -> Episode {
             None
         };
 
-        let my_score_before = game.red_player.score;
-        let opponent_score_before = game.blue_player.score;
+        let my_score_before = player(&game, my_color).score;
+        let opponent_score_before = player(&game, opponent_color).score;
         clock.tick();
-        let opponent_action = opponent.get_action(game.cells());
-        game.step(&clock, my_action, opponent_action);
-        let dying = matches!(game.red_player.state, PlayerState::Dying(_));
+        let opponent_action = opponent_ai.get_action(game.cells());
+
+        let (red_action, blue_action) = match my_color {
+            PlayerColor::Red => (my_action, opponent_action),
+            PlayerColor::Blue => (opponent_action, my_action),
+        };
+        game.step(&clock, red_action, blue_action);
+        let dying = matches!(player(&game, my_color).state, PlayerState::Dying(_));
         if !last_dying && dying {
             deaths += 1;
         }
         last_dying = dying;
-        let my_gain = (game.red_player.score - my_score_before) as f32;
-        let opponent_gain = (game.blue_player.score - opponent_score_before) as f32;
+        let my_gain = (player(&game, my_color).score - my_score_before) as f32;
+        let opponent_gain = (player(&game, opponent_color).score - opponent_score_before) as f32;
         rewards.push(my_gain - opponent_gain);
     }
 
@@ -91,8 +104,8 @@ fn play_episode(policy: &Mlp, game_seed: u64, rng_seed: u64) -> Episode {
         actions,
         returns: decision_ticks.iter().map(|&t| tick_returns[t]).collect(),
         decision_ticks,
-        my_score: game.red_player.score,
-        opponent_score: game.blue_player.score,
+        my_score: player(&game, my_color).score,
+        opponent_score: player(&game, opponent_color).score,
         deaths,
     }
 }
@@ -213,7 +226,7 @@ pub fn train(updates: usize, seed: u64) {
 
         policy
             .clone()
-            .save_file(format!("snapshots/reinforce-policy-{update:05}.bpk"))
+            .save_file(format!("snapshots/reinforce-ec-policy-{update:05}.bpk"))
             .unwrap();
     }
 }

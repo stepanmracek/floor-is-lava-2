@@ -3,7 +3,7 @@ use std::{error::Error, path::Path};
 use floor_is_lava_lib::{Cells, Controller, PlayerAction, PlayerColor};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 
-use crate::{Mlp, observation};
+use crate::{HIDDEN, INPUTS, Mlp, observation};
 
 pub const ACTIONS: [Option<PlayerAction>; 5] = [
     Some(PlayerAction::Up),
@@ -31,6 +31,11 @@ impl PolicyController {
     }
 
     fn new(policy: Mlp, color: PlayerColor, seed: u64) -> Result<Self, Box<dyn Error>> {
+        let inputs = policy.hidden1.weight.len() / HIDDEN;
+        if inputs != INPUTS {
+            return Err(format!("policy has {inputs} inputs, expected {INPUTS}").into());
+        }
+
         let outputs = policy.output.bias.len();
         if outputs != ACTIONS.len() {
             return Err(format!("policy has {outputs} outputs, expected {}", ACTIONS.len()).into());
@@ -47,7 +52,7 @@ impl Controller for PolicyController {
     /// Samples from the policy instead of taking the most likely action: the policy was
     /// trained and evaluated that way, deciding on every tick while idle.
     fn get_action(&mut self, cells: &Cells) -> Option<PlayerAction> {
-        let observation = observation(cells, self.color);
+        let observation = observation(cells, self.color)?;
         ACTIONS[self.policy.sample_action(&observation, self.rng.random())]
     }
 }
