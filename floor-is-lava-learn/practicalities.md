@@ -98,9 +98,11 @@ Facts about the tools and the training runs that cost time to find out.
 
 ## Reading the training log
 
-- **All numbers are training-rollout averages per episode:** the policy samples, always
-  plays red, and plays the simple AI in 60 s episodes. There is no separate evaluation
-  yet.
+- **All numbers are training-rollout averages per episode:** the policy samples, plays
+  the simple AI in 60 s episodes, and gets a random colour per episode (the first
+  REINFORCE and actor-critic runs always played red). For strength between policies,
+  use the headless evaluation in both colour arrangements; the training margin against
+  one opponent can mislead (see `todo.md`, *Retrain on the `flex` backend*).
 - **The margin (my score − opponent) is the number that matters,** not the raw score.
 - **`decisions` and `no-op` count ticks.** One no-op is 1/60 s, so 100 no-ops is ~1.7 s of
   waiting.

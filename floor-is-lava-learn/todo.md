@@ -90,7 +90,7 @@ step 2, because every snapshot is tied to its observation encoding and changing 
 after self-play would throw that training away.
 
 - [x] **Dropped: measure corner deaths** on `actor-critic-policy2` in the headless setup
-  (death classification from the evaluation harness below), as the baseline for the
+  (with a death classification, since dropped as well), as the baseline for the
   comparison.
   - Not measured. Deaths overall fell from 4.3 to ~1.5 per minute with the egocentric
     observation (REINFORCE plateaus), and in the 3D client the egocentric policy shows
@@ -194,7 +194,7 @@ corner situations.
     its higher training margin.
     - Likely cause: each was trained against a different simple AI (fixed vs random
       tie-breaks). A margin against one opponent is a poor strength measure, which
-      supports the opponent pool and the evaluation harness below.
+      supports the opponent pool and the benchmark opponents (step 2).
   - `ai-hard` now embeds the `flex` actor-critic, trained against the current simple
     AI. Both actor-critics are candidates for the opponent pool.
 - [x] **Re-export `ai-hard`;** `PolicyController` follows the new observation
@@ -203,22 +203,6 @@ corner situations.
     `cpu/actor-critic-ec-policy3-04000.safetensors`, now
     `flex/actor-critic-policy-04000.safetensors`. `PolicyController` picks the
     encoding from the model's input size.
-
-**Evaluation harness** (needed from here on; apart from the headless colour test, all
-numbers so far come from training rollouts: a sampling policy, always red, against the
-simple AI):
-
-- [ ] Evaluation in `floor-is-lava-headless`: fixed seeds, many games, win rate and
-  margin, as both colours. Started: the 200-game colour test (policy against policy)
-  is the first version; it still needs other opponents such as the simple AI.
-- [ ] **Death classification:** position on the board, and the situation:
-  - jumped into the void while all reachable blocks were already its own (deliberate
-    island escape, a good move);
-  - jumped into the void with unclaimed or opponent blocks reachable (a mistake, e.g. the
-    corner and "panic" deaths);
-  - sank while standing still.
-- [ ] **Compare** the egocentric agent with `actor-critic-policy2.bpk` against the simple
-  AI. Expect fewer corner deaths, and see whether the overall margin improves.
 
 ## 2. Training against older snapshots
 

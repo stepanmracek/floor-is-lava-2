@@ -126,11 +126,12 @@ and maps it through `ACTIONS`.**
   input differ every game, so games don't repeat, but the AI's random sequence starts
   the same every session. Seeding from the clock would vary it without adding `rand`
   back to the 3D crate.
-- **The agent plays red,** the colour it was trained as.
+- **The agent plays red** because the 3D client gives blue to the keyboard. Current
+  policies are trained as both colours, so it could play blue as well.
 
 ## Playing blue
 
-Every snapshot so far was trained as red only. Headless evaluation of
+The snapshots up to `actor-critic-policy2` were trained as red only. Headless evaluation of
 `actor-critic-policy2` against itself shows:
 
 - **Over one 24-hour game the colours are equal** (102.5 vs 103.6 points per minute):
@@ -139,9 +140,14 @@ Every snapshot so far was trained as red only. Headless evaluation of
   reproducible). The policy learned an opening for starting at x = −2 and plays it badly
   from x = 2.
 
-Planned fix: mirror the board for blue (reverse the columns in the observation, swap
+Considered fix: mirror the board for blue (reverse the columns in the observation, swap
 Left ↔ Right in the action). The rules are left-right symmetric, so this is exact and
 needs no retraining. See `todo.md`, step 0.
+
+**Chosen instead: the egocentric observation plus training as both colours** (`todo.md`,
+step 1). Policies trained this way play both colours at full strength. In the colour
+test with the same policy on both sides, red's edge is down to a few points of margin
+(e.g. 98 : 102 wins, +3.3).
 
 Usage of the headless evaluation:
 

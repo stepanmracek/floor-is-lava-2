@@ -235,8 +235,9 @@ Final policy: `snapshots/cpu/actor-critic-policy2.bpk`.
   would mostly exploit that one opponent's weaknesses; the next step is other opponents
   (see `todo.md`). A higher fine-tuning learning rate (KL max stayed at 0.0025) was not
   tried.
-- `snapshots/cpu/actor-critic-policy2.bpk` is the best policy so far. Its export,
-  `actor-critic-policy2.safetensors`, is embedded in the 3D client as `ai-hard`.
+- `snapshots/cpu/actor-critic-policy2.bpk` was the best policy at the time. Its export,
+  `actor-critic-policy2.safetensors`, was embedded in the 3D client as `ai-hard` (for
+  the current one see `adr-policy-deployment.md`).
 - **No longer loadable with the current code.** Both runs used the absolute observation
   (168 inputs), which was replaced by the egocentric one (455 inputs) and removed.
   `actor-critic-policy.bpk`, `actor-critic-policy2.bpk` and their `.safetensors`
@@ -247,8 +248,10 @@ Final policy: `snapshots/cpu/actor-critic-policy2.bpk`.
 ## Usage
 
 ```
-floor-is-lava-learn actor-critic <seed> [path/to/policy.bpk]
+floor-is-lava-learn actor-critic <seed> [path/to/policy.bpk] [--updates N] [--report-every N] [--snapshot-every N] [--snapshot-prefix P]
 ```
+
+Defaults and details: `--help` and `practicalities.md`.
 
 ## Open issues / next steps
 
