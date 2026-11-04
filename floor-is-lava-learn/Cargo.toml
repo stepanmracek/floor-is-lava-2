@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 burn = { version = "0.22.1", features = ["cpu"] }
+clap.workspace = true
 floor-is-lava-lib = { path = "../floor-is-lava-lib" }
 floor-is-lava-policy = { path = "../floor-is-lava-policy" }
 rand = "0.10.3"

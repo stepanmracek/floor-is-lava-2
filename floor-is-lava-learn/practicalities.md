@@ -49,16 +49,21 @@ Facts about the tools and the training runs that cost time to find out.
 ## Training runs
 
 - **Commands:**
-  - `cargo run --release -p floor-is-lava-learn -- reinforce <seed>`
-  - `cargo run --release -p floor-is-lava-learn -- actor-critic <seed> [policy.bpk]`
+  - `cargo run --release -p floor-is-lava-learn -- reinforce <seed> [OPTIONS]`
+  - `cargo run --release -p floor-is-lava-learn -- actor-critic <seed> [policy.bpk] [OPTIONS]`
+  - options: `--updates N`, `--report-every N`, `--snapshot-every N`, `--snapshot-prefix P`
+    (see `--help`)
   - `cargo run --release -p floor-is-lava-learn -- export <policy.bpk> <policy.safetensors>`
 
   Always use `--release`.
 - **`snapshots/` is created relative to the working directory.** Existing runs are in
   `floor-is-lava-learn/snapshots/`.
 - **Snapshots:**
-  - `reinforce-policy-{update:05}.bpk` / `actor-critic-policy-{update:05}.bpk`, saved
-    every 20 updates;
+  - `<prefix>policy-{update:05}.bpk`, saved every `--snapshot-every` updates (default 20;
+    the log line is printed every `--report-every`, default 20; 0 = never, e.g.
+    `--snapshot-every 0 --report-every 1` for debugging); the prefix defaults to
+    `snapshots/reinforce-` / `snapshots/actor-critic-` (e.g. `--snapshot-prefix
+    snapshots/actor-critic-ec-` for a tagged run), and its directory is created if missing;
   - policy only: the critic isn't saved, so it has to warm up again on every restart.
 - **Each run keeps `*-params.txt` (constants, seed, starting snapshot) and `*-log.txt`**
   next to its snapshots. Both finished runs used seed 42.

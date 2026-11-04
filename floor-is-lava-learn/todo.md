@@ -162,9 +162,11 @@ corner situations.
     keep improving anyway. In the egocentric actor-critic run explained variance fell
     from ~0.31 (warm-up) to ~0.20 and stayed there, so a saved critic isn't much better
     than a freshly warmed-up one.
-- [ ] **Run name in the snapshot path,** e.g. `snapshots/<run>/policy-{update:05}.bpk`.
+- [x] **Run name in the snapshot path,** e.g. `snapshots/<run>/policy-{update:05}.bpk`.
   Each run's counter starts at 1, so a continued run overwrites the previous run's
   snapshots; final snapshots are currently renamed by hand.
+  - Done: `--snapshot-prefix snapshots/<run>/` (the directory is created). Also
+    `--updates`, `--report-every` and `--snapshot-every`; see `practicalities.md`.
 - [x] **Retrain from scratch:** the existing snapshots can't be converted. Roughly
   REINFORCE 10 000 updates (~30 min) plus actor-critic ~30 000 (~4 h); possibly
   actor-critic directly from a random policy.

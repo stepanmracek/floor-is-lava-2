@@ -1,20 +1,32 @@
 use std::path::Path;
 
-use floor_is_lava_lib::{Clock, Controller, Game, PlayerColor};
+use clap::Parser;
+use floor_is_lava_lib::{Clock, Controller, Game, PlayerColor, SimpleAiController};
 use floor_is_lava_policy::PolicyController;
 
-fn main() {
-    let args = std::env::args().collect::<Vec<_>>();
-    let seed = args[1].parse::<u64>().unwrap();
+/// Policy-against-policy evaluation over 200 seeded games.
+#[derive(Parser)]
+struct Cli {
+    /// Seed for the first game; game g uses seed + g.
+    seed: u64,
+    /// Red policy (.safetensors).
+    red: String,
+    /// Blue policy (.safetensors).
+    blue: String,
+}
 
-    let mut red_ctrl =
-        PolicyController::from_path(Path::new(&args[2]), PlayerColor::Red, seed).unwrap();
-    let mut blue_ctrl = PolicyController::from_path(
-        Path::new(&args[3]),
-        PlayerColor::Blue,
-        seed.wrapping_add(1 << 32),
-    )
-    .unwrap();
+fn load_controller(path: &str, color: PlayerColor, seed: u64) -> Box<dyn Controller> {
+    match path {
+        "simple" => Box::new(SimpleAiController::new(color, seed)),
+        _ => Box::new(PolicyController::from_path(Path::new(path), color, seed).unwrap()),
+    }
+}
+
+fn main() {
+    let Cli { seed, red, blue } = Cli::parse();
+
+    let mut red_ctrl = load_controller(&red, PlayerColor::Red, seed);
+    let mut blue_ctrl = load_controller(&blue, PlayerColor::Blue, seed.wrapping_add(1 << 32));
 
     const GAMES: u64 = 200;
     let mut red_wins = 0;

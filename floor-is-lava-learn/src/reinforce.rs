@@ -6,7 +6,7 @@ use floor_is_lava_policy::{Mlp, observation};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 use rayon::prelude::*;
 
-use crate::helpers::{opponent, player};
+use crate::helpers::{create_snapshot_dir, opponent, player, snapshot_path};
 use crate::policy::{ACTIONS, Policy};
 
 const EPISODE_SECONDS: f32 = 60.0;
@@ -178,8 +178,16 @@ fn loss(policy: &Policy, episodes: Vec<Episode>, device: &Device) -> (Tensor<1>,
     (policy_loss - entropy * ENTROPY_COEF, mean_entropy)
 }
 
-pub fn train(updates: usize, seed: u64) {
-    std::fs::create_dir_all("snapshots").unwrap();
+pub fn train(
+    updates: usize,
+    seed: u64,
+    report_every: usize,
+    snapshot_every: usize,
+    snapshot_prefix: &str,
+) {
+    if snapshot_every != 0 {
+        create_snapshot_dir(snapshot_prefix);
+    }
     let device = Device::default().autodiff();
     let mut policy = Policy::new(&device);
     let mut optimizer = AdamConfig::new().init();
@@ -209,24 +217,25 @@ pub fn train(updates: usize, seed: u64) {
         let grads = GradientsParams::from_grads(loss.backward(), &policy);
         policy = optimizer.step(LEARNING_RATE, policy, grads);
 
-        if update % 20 != 0 {
-            continue;
+        // `checked_rem` is `None` for 0, so 0 means never
+        if update.checked_rem(report_every) == Some(0) {
+            let [up, down, left, right, noop] =
+                histogram.map(|count| count as f32 / EPISODES_PER_UPDATE as f32);
+            println!(
+                "update {update:5}: my score {:6.1}, opponent {:6.1}, decisions {:6.0}, deaths {:6.0}, \
+                 up {up:4.0}, down {down:4.0}, left {left:4.0}, right {right:4.0}, no-op {noop:4.0}, entropy {entropy:.2}",
+                my_score as f32 / EPISODES_PER_UPDATE as f32,
+                opponent_score as f32 / EPISODES_PER_UPDATE as f32,
+                decisions as f32 / EPISODES_PER_UPDATE as f32,
+                deaths as f32 / EPISODES_PER_UPDATE as f32,
+            );
         }
 
-        let [up, down, left, right, noop] =
-            histogram.map(|count| count as f32 / EPISODES_PER_UPDATE as f32);
-        println!(
-            "update {update:5}: my score {:6.1}, opponent {:6.1}, decisions {:6.0}, deaths {:6.0}, \
-             up {up:4.0}, down {down:4.0}, left {left:4.0}, right {right:4.0}, no-op {noop:4.0}, entropy {entropy:.2}",
-            my_score as f32 / EPISODES_PER_UPDATE as f32,
-            opponent_score as f32 / EPISODES_PER_UPDATE as f32,
-            decisions as f32 / EPISODES_PER_UPDATE as f32,
-            deaths as f32 / EPISODES_PER_UPDATE as f32,
-        );
-
-        policy
-            .clone()
-            .save_file(format!("snapshots/reinforce-ec-policy-{update:05}.bpk"))
-            .unwrap();
+        if update.checked_rem(snapshot_every) == Some(0) {
+            policy
+                .clone()
+                .save_file(snapshot_path(snapshot_prefix, update))
+                .unwrap();
+        }
     }
 }
