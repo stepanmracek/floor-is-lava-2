@@ -129,7 +129,7 @@ fn play_episode(policy: &Mlp, critic: &Mlp, game_seed: u64, rng_seed: u64) -> Ep
         PlayerColor::Blue
     };
     let opponent_color = opponent(my_color);
-    let mut opponent_ai = SimpleAiController::new(opponent_color);
+    let mut opponent_ai = SimpleAiController::new(opponent_color, rng_seed.wrapping_add(1 << 32));
 
     let mut observations = vec![];
     let mut actions = vec![];

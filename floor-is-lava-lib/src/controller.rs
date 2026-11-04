@@ -1,3 +1,5 @@
+use rand::{SeedableRng, rngs::StdRng, seq::IteratorRandom};
+
 use glam::{IVec2, ivec2};
 
 use crate::{BlockColor, Cell, Cells, JUMP_DURATION, LAVA_SPEED, PlayerAction, PlayerColor};
@@ -8,11 +10,28 @@ pub trait Controller {
 
 pub struct SimpleAiController {
     color: PlayerColor,
+    rng: StdRng,
 }
 
 impl SimpleAiController {
-    pub fn new(color: PlayerColor) -> Self {
-        Self { color }
+    pub fn new(color: PlayerColor, seed: u64) -> Self {
+        Self {
+            color,
+            rng: StdRng::seed_from_u64(seed),
+        }
+    }
+
+    fn value(color: PlayerColor, cell: &Cell) -> usize {
+        if cell.color == color.into() {
+            // my color -> no value
+            0
+        } else if cell.color == BlockColor::Neutral {
+            // neutral color -> regular value
+            cell.points
+        } else {
+            // opponent color -> twice as value
+            cell.points * 2
+        }
     }
 }
 
@@ -54,21 +73,15 @@ impl Controller for SimpleAiController {
             .filter(|(_action, cell)| cell.distance_from_lava > LAVA_SPEED * JUMP_DURATION)
             .collect::<Vec<_>>();
 
+        let color = self.color;
+        let best = plausible_moves
+            .iter()
+            .map(|(_, cell)| Self::value(color, cell))
+            .max()?;
         plausible_moves
             .iter()
-            .max_by_key(|(_action, cell)| {
-                let my_block_color = self.color.into();
-                if cell.color == my_block_color {
-                    // my color -> no value
-                    0
-                } else if cell.color == BlockColor::Neutral {
-                    // neutral color -> regular value
-                    cell.points
-                } else {
-                    // opponent color -> twice as value
-                    cell.points * 2
-                }
-            })
+            .filter(|(_, cell)| Self::value(color, cell) == best)
+            .choose(&mut self.rng)
             .map(|(action, _cell)| **action)
     }
 }

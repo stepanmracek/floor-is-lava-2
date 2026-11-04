@@ -35,7 +35,7 @@ async fn main() {
 
     let mut red_ctrl: Box<dyn Controller> = match arg.as_deref() {
         None => Box::new(KeyboardController::wasd(&keyboard_state)),
-        Some("ai-easy") => Box::new(SimpleAiController::new(PlayerColor::Red)),
+        Some("ai-easy") => Box::new(SimpleAiController::new(PlayerColor::Red, 42)),
         Some("ai-hard") => {
             Box::new(PolicyController::from_bytes(HARD_AI_POLICY, PlayerColor::Red, 42).unwrap())
         }

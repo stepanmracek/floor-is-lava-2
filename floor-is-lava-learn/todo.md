@@ -126,7 +126,7 @@ corner situations.
     blue only: +82.7 / +65.8).
   - Self-play gap +19.9 (blue only, 400 games) → **+6.3, 55.7% for red** (2000 games).
     Not ~0 yet; likely cause is the simple AI's tie-break (next item).
-- [ ] **Random tie-break in `SimpleAiController`:** among the plausible moves with the
+- [x] **Random tie-break in `SimpleAiController`:** among the plausible moves with the
   highest value, choose one at random, from a seeded rng (`SimpleAiController::new(color,
   seed)`).
   - Today `max_by_key` returns the last maximum, so ties go Right > Left > Down > Up.
@@ -144,6 +144,17 @@ corner situations.
     continue actor-critic) against it and re-run the self-play colour test.
   - The opponent changes, so margins against the simple AI aren't comparable with older
     logs; note it in the params files.
+
+  Done. Training seeds it from `rng_seed + 2³²`, the 3D client with 42.
+  - Simple AI against itself, 2000 games: red 968 : 1023 (48.6%), margin **−1.7**, was
+    +9.5. Symmetric within noise.
+  - The existing policies against it, 400 games per colour: `reinforce-ec-policy2-10000`
+    +77.4 as red / +79.9 as blue (old AI: +76.2 / +77.2); `actor-critic-ec-policy3-04000`
+    +94.2 / +95.3, 786 of 799 games won. No colour difference, and about the same
+    margins as against the old AI, so the policies didn't depend on its tie-break.
+  - **Not retrained against it.** The simple AI is nearly beaten, and the opponent pool
+    (step 2) includes it anyway. Whether the old tie-break caused the self-play gap
+    (+6.3) stays open; check the gap again after the first pool run.
 - [x] **Dropped: save the critic alongside the policy snapshots,** and load it on
   restart. Each restart currently costs the 200-update warm-up (explained variance
   starts at ~0.1 instead of ~0.25).
@@ -288,6 +299,16 @@ escapability, not just connectivity.**
   rate curve over the setting.
 - [x] Rename `PlainPolicy` to a neutral `Mlp`; the critic reuses it with one output.
   The policy crate is split into `observation.rs`, `mlp.rs` and `controller.rs`.
+- [ ] **Slow updates with new batch sizes.** In the egocentric actor-critic run, some
+  blocks of 20 updates took ~1 min on a single core, others a few seconds.
+  - Hypothesis: burn's `cpu` backend compiles kernels per tensor shape, and the batch
+    shape `[decisions, INPUTS]` changes every update (~3800 ± a few hundred rows).
+  - Check: log batch size and time per update; slow updates should be the first ones
+    with a new batch size.
+  - Fix if confirmed: pad batches to a multiple of e.g. 512 rows with a mask, so only a
+    few shapes occur; every `.mean()` in the losses and the advantage statistics then
+    use the real rows only. Affects `reinforce.rs` and `actor_critic.rs`.
+  - Then update `practicalities.md` (*Speed*), which calls it burn's initialization.
 - [ ] Share the rollout loop between `reinforce.rs` and `actor_critic.rs` if both stay
 - [ ] Maybe: merge `floor-is-lava-policy` into the lib behind a `policy` feature
 - [ ] Maybe: GAE / TD(λ) instead of Monte Carlo returns, if the critic gets good enough
