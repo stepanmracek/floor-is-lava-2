@@ -210,17 +210,17 @@ corner situations.
 existing safeguards cover most of what PPO would provide at first:
 
 - KL logging shows immediately if updates get too large;
-- the learning rate is cautious (KL max 0.0025);
+- the learning rate is cautious (KL max < 0.001 in the `flex` actor-critic run);
 - the simple AI stays in the pool against forgetting.
 
-Snapshots with the old (absolute) encoding can't be opponents unless the encoding is
-versioned, and they are weak as blue anyway (step 0). Simpler: the pool starts with the
-simple AI and the new egocentric snapshots only.
+The pool starts with the simple AI and the egocentric snapshots, which play both
+colours: `cpu/` and `flex/` REINFORCE and actor-critic. Snapshots with the old
+(absolute) encoding no longer load.
 
 **Tasks:**
 
 - [ ] **Benchmark opponents for the evaluation:** the simple AI plus frozen snapshots
-  (egocentric ones if step 1 was done). Evaluate every ~100–200 updates. Progress means rising numbers against all
+  (egocentric). Evaluate every ~100–200 updates. Progress means rising numbers against all
   benchmarks; falling numbers against old ones mean forgetting, so roll back.
 - [ ] **Opponent pool, one opponent per episode:**
   - ~50% recent snapshots, ~30% older snapshots, ~20% simple AI;
