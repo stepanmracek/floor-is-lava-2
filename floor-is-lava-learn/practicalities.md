@@ -8,7 +8,17 @@ Facts about the tools and the training runs that cost time to find out.
   defaults to `Float`, e.g. `Tensor<1, Int>`). The backend comes from the `Device`:
   - `Device::default()` for inference;
   - `Device::default().autodiff()` for training.
-- **Default features include autodiff,** and the `cpu` feature gives the CPU backend.
+- **Default features include autodiff;** the backend is chosen by a feature. We use
+  **`flex`**, a plain-Rust CPU backend that runs every operation right away.
+  - The earlier `cpu` feature (cubecl) merges queued operations into kernels and
+    compiles them with LLVM. For our small networks that cost ~0.2 s per REINFORCE update,
+    plus occasional ~60 s stalls on a single core, not tied to new batch sizes. Those
+    stalls appeared at the first read-back after a new combination of backward and Adam
+    operations.
+  - With several backend features enabled, `BURN_DEVICE` (`flex`, `cpu`, `ndarray`,
+    `vulkan`, …) picks one at runtime. With only one enabled, it is the default.
+  - Changing the backend changes floating-point results, so the same seed gives a
+    different run. Record the backend in `*-params.txt`.
 - **Modules:** `#[derive(Module, Debug)]` structs.
   - `Module::valid()` gives a copy without autodiff.
   - `Module::save_file(path)` / `load_file(path)` read and write **burnpack**. The path is
@@ -30,7 +40,7 @@ Facts about the tools and the training runs that cost time to find out.
   - `Tensor::from_data(TensorData::new(vec, [n, m]), &device)` from one flat `Vec<f32>`
     is fast.
   - `Tensor::stack` over ~1000 small tensors took ~19 s.
-- **Per-call overhead is ~1 ms** for a tiny forward pass with a read-back. For many small
+- **Per-call overhead was ~1 ms** (on `cpu`) for a tiny forward pass with a read-back. For many small
   inferences, as in rollouts, copy the weights out (`Policy::to_plain()`) and use plain
   Rust.
 - **No ONNX export** (import only). SafeTensors through `burn-store` exists behind a
@@ -57,13 +67,16 @@ Facts about the tools and the training runs that cost time to find out.
 
   Always use `--release`.
 - **`snapshots/` is created relative to the working directory.** Existing runs are in
-  `floor-is-lava-learn/snapshots/`.
+  `floor-is-lava-learn/snapshots/`, one subdirectory per burn backend: `cpu/` (all runs
+  up to the egocentric actor-critic) and `flex/` (from the switch to `flex` on, e.g.
+  `--snapshot-prefix snapshots/flex/reinforce-`; `actor-critic-policy-04000` is `ai-hard`).
 - **Snapshots:**
   - `<prefix>policy-{update:05}.bpk`, saved every `--snapshot-every` updates (default 20;
     the log line is printed every `--report-every`, default 20; 0 = never, e.g.
     `--snapshot-every 0 --report-every 1` for debugging); the prefix defaults to
     `snapshots/reinforce-` / `snapshots/actor-critic-` (e.g. `--snapshot-prefix
-    snapshots/actor-critic-ec-` for a tagged run), and its directory is created if missing;
+    snapshots/flex/actor-critic-` for a run kept in `flex/`), and its directory is
+    created if missing;
   - policy only: the critic isn't saved, so it has to warm up again on every restart.
 - **Each run keeps `*-params.txt` (constants, seed, starting snapshot) and `*-log.txt`**
   next to its snapshots. Both finished runs used seed 42.
@@ -71,11 +84,15 @@ Facts about the tools and the training runs that cost time to find out.
   rng, so a run is reproducible for a given seed despite the parallel rollouts. The
   REINFORCE run was made before the parallel rollouts and won't reproduce exactly with
   the current code.
-- **Speed:**
-  - REINFORCE ~0.1–0.2 s per update;
-  - actor-critic with the separate critic and 10 critic steps ~0.45 s per update
-    (10 000 updates ≈ 75 min);
-  - the first ~20 updates are slower because of burn's initialization.
+- **Speed** (`flex` backend, laptop with an Intel CPU):
+  - REINFORCE ~5.5 ms per update (10 000 updates ≈ 1 min);
+  - actor-critic with the separate critic and 10 critic steps ~0.1 s per update
+    (4000 updates ≈ 6.5 min);
+  - the rollout of 32 episodes takes only a few ms; the time goes into burn.
+  - On the earlier `cpu` backend: REINFORCE ~0.2 s and actor-critic ~0.45 s per update,
+    plus the ~60 s stalls.
+  - For timing, `--report-every 1 --snapshot-every 0 | ts "%.T"` gives a timestamp per
+    update without writing snapshots.
 - **Smoke tests:** run from a scratch directory (e.g. `/tmp/…`) so test snapshots don't
   end up among the real ones.
 

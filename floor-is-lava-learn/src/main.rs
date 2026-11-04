@@ -65,7 +65,13 @@ fn main() {
             report_every,
             snapshot_every,
             snapshot_prefix,
-        } => reinforce::train(updates, seed, report_every, snapshot_every, &snapshot_prefix),
+        } => reinforce::train(
+            updates,
+            seed,
+            report_every,
+            snapshot_every,
+            &snapshot_prefix,
+        ),
         Command::ActorCritic {
             seed,
             policy,

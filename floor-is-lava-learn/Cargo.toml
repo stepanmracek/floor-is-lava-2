@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-burn = { version = "0.22.1", features = ["cpu"] }
+burn = { version = "0.22.1", features = ["flex"] }
 clap.workspace = true
 floor-is-lava-lib = { path = "../floor-is-lava-lib" }
 floor-is-lava-policy = { path = "../floor-is-lava-policy" }

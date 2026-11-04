@@ -2,7 +2,7 @@ UPDATES = 10000
 SEED = 42
 PLAY_AS = Both
 OBSERVATION = observation_egocentric
-FINAL_POLICY = snapshots/reinforce-ec-policy2-10000.bpk
+FINAL_POLICY = snapshots/cpu/reinforce-ec-policy2-10000.bpk
 EPISODE_SECONDS = 60.0
 DT 1.0 / 60.0
 GAMMA_PER_SECOND = 0.99

@@ -24,8 +24,9 @@
   self-play).
 - `floor-is-lava-learn/practicalities.md`: burn 0.22 and Adam pitfalls, training
   commands, snapshot and log conventions, how to read the training log.
-- `floor-is-lava-learn/snapshots/*-params.txt` and `*-log.txt`: parameters and logs of
-  finished runs.
+- `floor-is-lava-learn/snapshots/<backend>/*-params.txt` and `*-log.txt`: parameters and
+  logs of finished runs, grouped by the burn backend they were trained with (`cpu/`,
+  `flex/`).
 
 ## Working agreements
 

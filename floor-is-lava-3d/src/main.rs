@@ -30,7 +30,7 @@ async fn main() {
     let arg = std::env::args().nth(1);
 
     const HARD_AI_POLICY: &[u8] = include_bytes!(
-        "../../floor-is-lava-learn/snapshots/actor-critic-ec-policy3-04000.safetensors"
+        "../../floor-is-lava-learn/snapshots/flex/actor-critic-policy-04000.safetensors"
     );
 
     let mut red_ctrl: Box<dyn Controller> = match arg.as_deref() {

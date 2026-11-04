@@ -1,7 +1,7 @@
 UPDATES = 20000
 SEED = 42
-INITIAL_POLICY = snapshots/actor-critic-policy.bpk
-FINAL_POLICY = snapshots/actor-critic-policy2.bpk
+INITIAL_POLICY = snapshots/cpu/actor-critic-policy.bpk
+FINAL_POLICY = snapshots/cpu/actor-critic-policy2.bpk
 CRITIC = separate network, 168 -> 128 -> ReLU -> 128 -> ReLU -> 1
 EPISODE_SECONDS = 60.0
 DT = 1.0 / 60.0

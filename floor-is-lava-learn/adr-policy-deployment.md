@@ -115,7 +115,7 @@ and maps it through `ACTIONS`.**
 
 - **The model is embedded in the binary** with `include_bytes!`
   (originally `snapshots/actor-critic-policy2.safetensors`, now
-  `snapshots/reinforce-ec-policy2-10000.safetensors`), so `ai-hard` can't fail to find
+  `snapshots/flex/actor-critic-policy-04000.safetensors`), so `ai-hard` can't fail to find
   its file and doesn't depend on the working directory.
   - Models trained on the absolute observation (168 inputs), including
     `actor-critic-policy2`, no longer load since the egocentric observation replaced

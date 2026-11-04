@@ -22,7 +22,7 @@ procedural level generation.**
   used by the 3D client (`ai-hard`) and the headless evaluation
 - [x] Second actor-critic run against the simple AI: 20 000 updates from
   `actor-critic-policy.bpk` (`FINE_TUNE_LEARNING_RATE` = 3e-4); params in
-  `snapshots/actor-critic-params2.txt`, log in `snapshots/actor-critic-log2.txt`,
+  `snapshots/cpu/actor-critic-params2.txt`, log in `snapshots/cpu/actor-critic-log2.txt`,
   final policy `actor-critic-policy2.bpk` (exported, used by `ai-hard`).
   - Margin +57 → **+76**, ≈ 153 : 77 per minute; deaths 3.2 → 2.5; KL max 0.0025.
   - Gains slowed from ~+1.3 per 1000 updates to a **plateau at about +76 from ~16 000
@@ -177,11 +177,32 @@ corner situations.
     then flat. Head-to-head against the REINFORCE policy, both colour arrangements, 200
     games each: **72.5% wins, margin +25.2** (snapshot 1780: 63.4% / +13.3), so it kept
     improving after the training margin went flat.
+  - Both runs are in `snapshots/cpu/`.
+- [x] **Retrain on the `flex` backend** (`snapshots/flex/`, seed 42, same constants).
+  The simple AI now breaks ties randomly and the same for both colours (`231ac99`).
+  - REINFORCE, 10 000 updates (~1 min): margin 0 at update ~400, plateau **+78**, deaths
+    1.5, the same as on `cpu`. Head-to-head against `cpu/reinforce-ec-policy2-10000`,
+    both colour arrangements, 200 games each: **52.8% wins, margin +3.7**, a draw within
+    noise. So the backend doesn't change what is learned.
+  - Actor-critic from it, stopped after 4000 updates (~6.5 min), final
+    `actor-critic-policy-04000.bpk`. Training margin +91 → **+98**, still rising slowly;
+    KL max < 0.001, explained variance ~0.2.
+  - Head-to-head against its REINFORCE start: 68.8% / +24.2. The `cpu` actor-critic
+    against the same: 75.0% / +30.3.
+  - Head-to-head against `cpu/actor-critic-ec-policy3-04000`, 5 seeds × 2 colour
+    arrangements × 200 games: **38.1% wins, margin −15.5**. It loses clearly despite
+    its higher training margin.
+    - Likely cause: each was trained against a different simple AI (fixed vs random
+      tie-breaks). A margin against one opponent is a poor strength measure, which
+      supports the opponent pool and the evaluation harness below.
+  - `ai-hard` now embeds the `flex` actor-critic, trained against the current simple
+    AI. Both actor-critics are candidates for the opponent pool.
 - [x] **Re-export `ai-hard`;** `PolicyController` follows the new observation
   automatically through the shared crate.
-  - Now embeds `reinforce-ec-policy2-10000.safetensors`; `PolicyController` picks the
-    encoding from the model's input size. Candidate for an update to
-    `actor-critic-ec-policy3-04000`.
+  - Embedded `reinforce-ec-policy2-10000.safetensors` first, then
+    `cpu/actor-critic-ec-policy3-04000.safetensors`, now
+    `flex/actor-critic-policy-04000.safetensors`. `PolicyController` picks the
+    encoding from the model's input size.
 
 **Evaluation harness** (needed from here on; apart from the headless colour test, all
 numbers so far come from training rollouts: a sampling policy, always red, against the
@@ -301,16 +322,21 @@ escapability, not just connectivity.**
   rate curve over the setting.
 - [x] Rename `PlainPolicy` to a neutral `Mlp`; the critic reuses it with one output.
   The policy crate is split into `observation.rs`, `mlp.rs` and `controller.rs`.
-- [ ] **Slow updates with new batch sizes.** In the egocentric actor-critic run, some
+- [x] **Slow updates with new batch sizes.** In the egocentric actor-critic run, some
   blocks of 20 updates took ~1 min on a single core, others a few seconds.
   - Hypothesis: burn's `cpu` backend compiles kernels per tensor shape, and the batch
     shape `[decisions, INPUTS]` changes every update (~3800 ± a few hundred rows).
-  - Check: log batch size and time per update; slow updates should be the first ones
-    with a new batch size.
-  - Fix if confirmed: pad batches to a multiple of e.g. 512 rows with a mask, so only a
-    few shapes occur; every `.mean()` in the losses and the advantage statistics then
-    use the real rows only. Affects `reinforce.rs` and `actor_critic.rs`.
-  - Then update `practicalities.md` (*Speed*), which calls it burn's initialization.
+  - **Rejected.** Timing every REINFORCE update (100 updates, ~1100 decisions each):
+    stalls of ~59 s at updates 2, 3 and 22, while 85 of 88 first-seen batch sizes were
+    fast.
+    - Timing each phase put the whole stall in the next `to_plain()`, the first
+      read-back after the lazily queued backward pass and Adam step. The rollout,
+      loss, backward and step themselves took ≤ 0.3 s.
+    - Only one core was busy during a stall. That fits cubecl compiling merged kernels
+      with LLVM.
+  - **Fixed by switching burn to the `flex` backend:** no stalls, and ~5.5 ms instead of
+    ~0.2 s per REINFORCE update. Padding batches isn't needed. See `practicalities.md`
+    (*burn 0.22*, *Speed*).
 - [ ] Share the rollout loop between `reinforce.rs` and `actor_critic.rs` if both stay
 - [ ] Maybe: merge `floor-is-lava-policy` into the lib behind a `policy` feature
 - [ ] Maybe: GAE / TD(λ) instead of Monte Carlo returns, if the critic gets good enough

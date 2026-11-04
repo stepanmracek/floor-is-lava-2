@@ -172,7 +172,8 @@ The same as REINFORCE, plus:
 - `lr`: the policy's current learning rate.
 - `(warm-up)` on lines from warm-up updates.
 
-Snapshots: `snapshots/actor-critic-policy-{update:05}.bpk` every 20 updates (policy only).
+Snapshots: `snapshots/actor-critic-policy-{update:05}.bpk` every 20 updates (policy only;
+the kept ones are now in `snapshots/cpu/`).
 Each run's update counter starts at 1, so the kept final snapshots were renamed by hand:
 `actor-critic-policy.bpk` (first run) and `actor-critic-policy2.bpk` (second run).
 
@@ -181,8 +182,8 @@ Each run's update counter starts at 1, so the kept final snapshots were renamed 
 ### First run
 
 10 000 updates from `reinforce-policy-10000.bpk`, with the separate critic.
-Parameters are saved in `snapshots/actor-critic-params.txt` and the log in
-`snapshots/actor-critic-log.txt`. Final policy: `snapshots/actor-critic-policy.bpk`.
+Parameters are saved in `snapshots/cpu/actor-critic-params.txt` and the log in
+`snapshots/cpu/actor-critic-log.txt`. Final policy: `snapshots/cpu/actor-critic-policy.bpk`.
 
 | updates | margin (my − opp) | deaths | Up | no-ops | entropy | explained var | KL max |
 |---|---|---|---|---|---|---|---|
@@ -211,8 +212,8 @@ Parameters are saved in `snapshots/actor-critic-params.txt` and the log in
 
 20 000 more updates from `actor-critic-policy.bpk` with the same parameters,
 including `FINE_TUNE_LEARNING_RATE` = 3e-4. The critic isn't saved, so it warmed up again.
-Parameters in `snapshots/actor-critic-params2.txt`, log in `snapshots/actor-critic-log2.txt`.
-Final policy: `snapshots/actor-critic-policy2.bpk`.
+Parameters in `snapshots/cpu/actor-critic-params2.txt`, log in `snapshots/cpu/actor-critic-log2.txt`.
+Final policy: `snapshots/cpu/actor-critic-policy2.bpk`.
 
 | updates | margin (my − opp) | deaths | Up | explained var | KL max |
 |---|---|---|---|---|---|
@@ -234,7 +235,7 @@ Final policy: `snapshots/actor-critic-policy2.bpk`.
   would mostly exploit that one opponent's weaknesses; the next step is other opponents
   (see `todo.md`). A higher fine-tuning learning rate (KL max stayed at 0.0025) was not
   tried.
-- `snapshots/actor-critic-policy2.bpk` is the best policy so far. Its export,
+- `snapshots/cpu/actor-critic-policy2.bpk` is the best policy so far. Its export,
   `actor-critic-policy2.safetensors`, is embedded in the 3D client as `ai-hard`.
 - **No longer loadable with the current code.** Both runs used the absolute observation
   (168 inputs), which was replaced by the egocentric one (455 inputs) and removed.

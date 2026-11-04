@@ -1,0 +1,25 @@
+UPDATES = 4020 (stopped by hand after the 4000 snapshot, to match the cpu run; configured 10000)
+SEED = 42
+BACKEND = flex (BURN_DEVICE=flex, burn 0.22.1)
+CODE = 8e84b01 + burn feature "flex" in floor-is-lava-learn/Cargo.toml
+REPORT_EVERY = 20
+SNAPSHOT_EVERY = 100
+SNAPSHOT_PREFIX = snapshots/flex/actor-critic-
+PLAY_AS = Both
+OBSERVATION = egocentric (floor_is_lava_policy::observation)
+SIMPLE_AI = random, colour-symmetric tie-breaks (since 231ac99)
+INITIAL_POLICY = snapshots/flex/reinforce-policy-10000.bpk
+FINAL_POLICY = snapshots/flex/actor-critic-policy-04000.bpk
+CRITIC = separate network, 455 -> 128 -> ReLU -> 128 -> ReLU -> 1
+EPISODE_SECONDS = 60.0
+DT = 1.0 / 60.0
+GAMMA_PER_SECOND = 0.99
+ENTROPY_COEF = 0.01
+VALUE_COEF = 0.5
+REWARD_SCALE = 10.0
+EPISODES_PER_UPDATE = 32
+LEARNING_RATE = 1e-3
+FINE_TUNE_LEARNING_RATE = 3e-4
+LEARNING_RATE_RAMP_UPDATES = 100
+WARMUP_UPDATES = 200
+CRITIC_STEPS = 10

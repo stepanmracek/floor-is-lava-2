@@ -201,13 +201,14 @@ Logged every 20 updates, averaged per episode:
 The histogram and the death count were what revealed the policy collapse and the
 "never go Up" local optimum.
 
-Snapshots: `snapshots/reinforce-policy-{update:05}.bpk` (burnpack) every 20 updates.
+Snapshots: `snapshots/reinforce-policy-{update:05}.bpk` (burnpack) every 20 updates (the
+kept ones are now in `snapshots/cpu/`).
 Opponent: `SimpleAiController` playing blue. The agent always plays red.
 
 ## Results
 
 10 000 updates against the simple AI, relative reward. Parameters are saved in
-`snapshots/reinforce-params.txt` and the log in `snapshots/reinforce-log.txt`.
+`snapshots/cpu/reinforce-params.txt` and the log in `snapshots/cpu/reinforce-log.txt`.
 
 | updates | margin (my − opp) | deaths | Up | entropy |
 |---|---|---|---|---|
@@ -222,7 +223,7 @@ Opponent: `SimpleAiController` playing blue. The agent always plays red.
   almost nothing, and the opponent lost ~65 points per episode compared with the start.
 - **It plateaued** at +21–22 for the last ~2000 updates, while entropy kept falling.
   The policy kept becoming more deterministic without getting better.
-- `snapshots/reinforce-policy-10000.bpk` is the starting point of the actor-critic.
+- `snapshots/cpu/reinforce-policy-10000.bpk` is the starting point of the actor-critic.
 - **No longer loadable with the current code.** The absolute observation (168 inputs)
   was replaced by the egocentric one (455 inputs) and removed, so this snapshot, like
   every snapshot and export trained on the absolute observation, fails to load with a
