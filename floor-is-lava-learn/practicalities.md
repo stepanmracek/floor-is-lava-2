@@ -69,17 +69,21 @@ Facts about the tools and the training runs that cost time to find out.
 - **`snapshots/` is created relative to the working directory.** Existing runs are in
   `floor-is-lava-learn/snapshots/`, one subdirectory per burn backend: `cpu/` (all runs
   up to the egocentric actor-critic) and `flex/` (from the switch to `flex` on, e.g.
-  `--snapshot-prefix snapshots/flex/reinforce-`; `actor-critic-from-scratch-policy-20000` is `ai-hard`).
+  `--snapshot-prefix snapshots/flex/reinforce-`; `actor-critic-from-scratch-pool-policy-08000` is `ai-hard`).
 - **Snapshots:**
-  - `<prefix>policy-{update:05}.bpk`, saved every `--snapshot-every` updates (default 20;
-    the log line is printed every `--report-every`, default 20; 0 = never, e.g.
-    `--snapshot-every 0 --report-every 1` for debugging); the prefix defaults to
+  - `<prefix>policy-{update:05}.bpk`, saved every `--snapshot-every` updates (default 20
+    for REINFORCE, 500 for actor-critic; the log line is printed every `--report-every`,
+    default 20; 0 = never, e.g. `--snapshot-every 0 --report-every 1` for debugging);
+  - in actor-critic every snapshot also joins the opponent pool once the gate is open
+    (see `adr-actor_critic.md`, *Opponent pool*), so `--snapshot-every` is also the pool
+    interval, and `--snapshot-every 0` means training against the simple AI only;
+  - the prefix defaults to
     `snapshots/reinforce-` / `snapshots/actor-critic-` (e.g. `--snapshot-prefix
     snapshots/flex/actor-critic-` for a run kept in `flex/`), and its directory is
     created if missing;
   - policy only: the critic isn't saved, so it has to warm up again on every restart.
 - **Each run keeps `*-params.txt` (constants, seed, starting snapshot) and `*-log.txt`**
-  next to its snapshots. Both finished runs used seed 42.
+  next to its snapshots. All finished runs so far used seed 42.
 - **Reproducibility:** each episode gets its game seed and sampling seed from the main
   rng, so a run is reproducible for a given seed despite the parallel rollouts. The
   REINFORCE run was made before the parallel rollouts and won't reproduce exactly with
@@ -99,11 +103,21 @@ Facts about the tools and the training runs that cost time to find out.
 ## Reading the training log
 
 - **All numbers are training-rollout averages per episode:** the policy samples, plays
-  the simple AI in 60 s episodes, and gets a random colour per episode (the first
-  REINFORCE and actor-critic runs always played red). For strength between policies,
-  use the headless evaluation in both colour arrangements; the training margin against
-  one opponent can mislead (see `todo.md`, *Retrain on the `flex` backend*).
+  60 s episodes, and gets a random colour per episode (the first REINFORCE and
+  actor-critic runs always played red). The opponent is the simple AI in REINFORCE and
+  in actor-critic runs before the opponent pool; since then it's drawn from the pool.
+  For strength between policies, use the headless evaluation in both colour
+  arrangements; the training margin against one opponent can mislead (see `todo.md`,
+  *Retrain on the `flex` backend*).
 - **The margin (my score − opponent) is the number that matters,** not the raw score.
+- **Actor-critic with the pool prints a second line per report:**
+  `pool N, margin vs simple AI <games>: <margin>, latest …, older …`. The margins are per
+  game, over all games since the last report (the simple AI gets only ~3 games per
+  update). With mixed opponents, the first line's `my score` / `opponent` average over
+  all opponent groups, so use the second line. A one-off line `opponent pool open` marks
+  the gate.
+  - Margins against "latest" and "older" measure progress against the run's own lineage,
+    which overstates real progress; check against outside policies headlessly.
 - **`decisions` and `no-op` count ticks.** One no-op is 1/60 s, so 100 no-ops is ~1.7 s of
   waiting.
 - **`explained var`:** ≈ 0 means the critic is useless, 0.2–0.5 useful, < 0 worse than

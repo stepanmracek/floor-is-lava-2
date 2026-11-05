@@ -1,0 +1,32 @@
+UPDATES = ~12000 (stopped by hand; collapsed at update ~9000, log and snapshots cut after 8000; configured 20000)
+SEED = 42
+BACKEND = flex (BURN_DEVICE=flex, burn 0.22.1)
+CODE = e498921
+REPORT_EVERY = 100
+SNAPSHOT_EVERY = 1000 (also the opponent-pool interval)
+SNAPSHOT_PREFIX = snapshots/flex/actor-critic-from-scratch-pool-
+PLAY_AS = Both
+OBSERVATION = egocentric (floor_is_lava_policy::observation)
+SIMPLE_AI = random, colour-symmetric tie-breaks (since 231ac99)
+INITIAL_POLICY = none (random initialisation)
+FINAL_POLICY = snapshots/flex/actor-critic-from-scratch-pool-policy-08000.bpk (last snapshot before the collapse)
+CRITIC = separate network, 455 -> 128 -> ReLU -> 128 -> ReLU -> 1
+OPPONENTS = pool: simple AI plus the run's own snapshots, one opponent per episode
+  - empty pool: simple AI; one snapshot: 50% it, 50% simple AI;
+    otherwise 50% latest snapshot, 10% simple AI, 40% uniform over the older snapshots
+  - drawn from a separate rng seeded with SEED + 2^32
+  - snapshot opponents sample on every tick (like PolicyController), seeded with the
+    episode's rng_seed + 2^32
+POOL_GATE_UPDATES = 10 (pool opened at update 614; snapshots join only after that)
+EPISODE_SECONDS = 60.0
+DT = 1.0 / 60.0
+GAMMA_PER_SECOND = 0.99
+ENTROPY_COEF = 0.01
+VALUE_COEF = 0.5
+REWARD_SCALE = 10.0
+EPISODES_PER_UPDATE = 32
+LEARNING_RATE = 1e-3 (constant for the whole run)
+FINE_TUNE_LEARNING_RATE = not used (no initial policy)
+LEARNING_RATE_RAMP_UPDATES = not used (no initial policy)
+WARMUP_UPDATES = 0 (no initial policy, so no critic warm-up)
+CRITIC_STEPS = 10

@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use burn::nn::{Linear, LinearConfig, Relu};
 use burn::optim::{AdamConfig, GradientsParams, ModuleOptimizer};
 use burn::prelude::*;
@@ -28,6 +30,90 @@ const LEARNING_RATE_RAMP_UPDATES: usize = 100;
 const WARMUP_UPDATES: usize = 200;
 /// Extra critic-only gradient steps on each batch, after the main update.
 const CRITIC_STEPS: usize = 10;
+/// The opponent pool opens once the margin against the simple AI, summed over this many
+/// updates, is positive. Until then the pool is empty, so all episodes are against the
+/// simple AI.
+const POOL_GATE_UPDATES: usize = 10;
+
+/// Opponent of one episode. The pool doesn't change during the rollouts, so `Latest`
+/// is always the same snapshot within one update.
+enum Opponent {
+    SimpleAi,
+    Latest,
+    /// Index into the pool, excluding the latest.
+    Older(usize),
+}
+
+impl Opponent {
+    /// The snapshot to play against, `None` for the simple AI.
+    fn policy<'a>(&self, pool: &'a [Mlp]) -> Option<&'a Mlp> {
+        match self {
+            Opponent::SimpleAi => None,
+            Opponent::Latest => pool.last(),
+            Opponent::Older(i) => Some(&pool[*i]),
+        }
+    }
+}
+
+/// - empty pool => simple AI;
+/// - one snapshot => 50% it, 50% simple AI;
+/// - otherwise => 50% latest, 10% simple AI, 40% uniform over the older snapshots.
+fn choose_opponent(pool_size: usize, rng: &mut StdRng) -> Opponent {
+    let u: f32 = rng.random();
+    match pool_size {
+        0 => Opponent::SimpleAi,
+        _ if u < 0.5 => Opponent::Latest,
+        1 => Opponent::SimpleAi,
+        _ if u < 0.6 => Opponent::SimpleAi,
+        n => Opponent::Older(rng.random_range(0..n - 1)),
+    }
+}
+
+/// Games and summed margin against one opponent group, since the last report.
+#[derive(Default)]
+struct Record {
+    games: usize,
+    margin: i64,
+}
+
+#[derive(Default)]
+struct Records {
+    simple_ai: Record,
+    latest: Record,
+    older: Record,
+}
+
+impl Records {
+    fn add(&mut self, opponent: &Opponent, margin: i64) {
+        let record = match opponent {
+            Opponent::SimpleAi => &mut self.simple_ai,
+            Opponent::Latest => &mut self.latest,
+            Opponent::Older(_) => &mut self.older,
+        };
+        record.games += 1;
+        record.margin += margin;
+    }
+
+    /// e.g. "simple AI 320: +55.1, latest 1600: +12.0, older 1280: +40.3"
+    fn summary(&self) -> String {
+        [
+            ("simple AI", &self.simple_ai),
+            ("latest", &self.latest),
+            ("older", &self.older),
+        ]
+        .iter()
+        .filter(|(_, record)| record.games > 0)
+        .map(|(name, record)| {
+            format!(
+                "{name} {}: {:+.1}",
+                record.games,
+                record.margin as f32 / record.games as f32
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+    }
+}
 
 /// Value network with its own trunk: INPUTS → HIDDEN → ReLU → HIDDEN → ReLU → 1.
 #[derive(Module, Debug)]
@@ -116,9 +202,15 @@ fn discounted_returns(rewards: &[f32], bootstrap: f32) -> Vec<f32> {
     returns
 }
 
-/// Plays one episode against the simple AI.
+/// Plays one episode against `opponent_policy`, or against the simple AI if `None`.
 /// `game_seed` seeds the game, `rng_seed` the sampling of actions.
-fn play_episode(policy: &Mlp, critic: &Mlp, game_seed: u64, rng_seed: u64) -> Episode {
+fn play_episode(
+    policy: &Mlp,
+    critic: &Mlp,
+    opponent_policy: Option<&Mlp>,
+    game_seed: u64,
+    rng_seed: u64,
+) -> Episode {
     let mut game = Game::with_seed(game_seed);
     let mut rng = StdRng::seed_from_u64(rng_seed);
     let mut clock = Clock::fixed(DT);
@@ -129,7 +221,10 @@ fn play_episode(policy: &Mlp, critic: &Mlp, game_seed: u64, rng_seed: u64) -> Ep
         PlayerColor::Blue
     };
     let opponent_color = opponent(my_color);
-    let mut opponent_ai = SimpleAiController::new(opponent_color, rng_seed.wrapping_add(1 << 32));
+    // only one of the two opponents plays, so they can share the seed
+    let opponent_seed = rng_seed.wrapping_add(1 << 32);
+    let mut simple_ai = SimpleAiController::new(opponent_color, opponent_seed);
+    let mut opponent_rng = StdRng::seed_from_u64(opponent_seed);
 
     let mut observations = vec![];
     let mut actions = vec![];
@@ -157,7 +252,16 @@ fn play_episode(policy: &Mlp, critic: &Mlp, game_seed: u64, rng_seed: u64) -> Ep
         let my_score_before = player(&game, my_color).score;
         let opponent_score_before = player(&game, opponent_color).score;
         clock.tick();
-        let opponent_action = opponent_ai.get_action(game.cells());
+        // a snapshot opponent plays like `PolicyController`: it samples on every tick,
+        // without owning (cloning) the shared snapshot
+        let opponent_action = match opponent_policy {
+            None => simple_ai.get_action(game.cells()),
+            Some(opponent_policy) => {
+                observation(game.cells(), opponent_color).and_then(|observation| {
+                    ACTIONS[opponent_policy.sample_action(&observation, opponent_rng.random())]
+                })
+            }
+        };
 
         let (red_action, blue_action) = match my_color {
             PlayerColor::Red => (my_action, opponent_action),
@@ -339,6 +443,10 @@ fn approx_kl(policy: &Mlp, episodes: &[Episode]) -> f32 {
 
 /// Trains an actor-critic agent. Starts from the policy snapshot at `policy_path`
 /// (warming up the critic first) or from a fresh random policy.
+///
+/// Opponents come from a pool: the simple AI plus the run's own snapshots. Every
+/// snapshot joins the pool once the policy has beaten the simple AI (see
+/// `POOL_GATE_UPDATES`); with `snapshot_every` = 0 it plays only the simple AI.
 pub fn train(
     policy_path: Option<&str>,
     updates: usize,
@@ -358,6 +466,13 @@ pub fn train(
     let mut model = ActorCritic::new(policy, &device);
     let mut optimizer = AdamConfig::new().init();
     let mut rng = StdRng::seed_from_u64(seed);
+    // separate rng, so the game and sampling seeds are the same as without the pool
+    let mut pool_rng = StdRng::seed_from_u64(seed.wrapping_add(1 << 32));
+
+    let mut pool: Vec<Mlp> = vec![];
+    let mut pool_open = false;
+    let mut gate_margins: VecDeque<i64> = VecDeque::new();
+    let mut records = Records::default();
 
     for update in 1..=updates {
         let warmup = update <= warmup_updates;
@@ -374,12 +489,40 @@ pub fn train(
         let seeds: Vec<(u64, u64)> = (0..EPISODES_PER_UPDATE)
             .map(|_| (rng.random(), rng.random()))
             .collect();
+        let opponents: Vec<Opponent> = (0..EPISODES_PER_UPDATE)
+            .map(|_| choose_opponent(pool.len(), &mut pool_rng))
+            .collect();
         let episodes: Vec<Episode> = seeds
             .into_par_iter()
-            .map(|(game_seed, rng_seed)| {
-                play_episode(&rollout_policy, &rollout_critic, game_seed, rng_seed)
+            .zip(opponents.par_iter())
+            .map(|((game_seed, rng_seed), opponent)| {
+                play_episode(
+                    &rollout_policy,
+                    &rollout_critic,
+                    opponent.policy(&pool),
+                    game_seed,
+                    rng_seed,
+                )
             })
             .collect();
+
+        let mut update_margin = 0;
+        for (episode, opponent) in episodes.iter().zip(&opponents) {
+            let margin = episode.my_score as i64 - episode.opponent_score as i64;
+            records.add(opponent, margin);
+            update_margin += margin;
+        }
+        // before the gate opens the pool is empty, so all games are against the simple AI
+        if !pool_open {
+            gate_margins.push_back(update_margin);
+            if gate_margins.len() > POOL_GATE_UPDATES {
+                gate_margins.pop_front();
+            }
+            if gate_margins.len() == POOL_GATE_UPDATES && gate_margins.iter().sum::<i64>() > 0 {
+                pool_open = true;
+                println!("update {update:5}: opponent pool open");
+            }
+        }
 
         let decisions: usize = episodes.iter().map(|e| e.actions.len()).sum();
         let mut histogram = [0usize; ACTIONS.len()];
@@ -413,6 +556,13 @@ pub fn train(
                 info.value_loss,
                 info.explained_variance,
             );
+            // margin per opponent group since the last report, as games: margin
+            println!(
+                "             pool {:3}, margin vs {}",
+                pool.len(),
+                records.summary()
+            );
+            records = Records::default();
         }
 
         if update.checked_rem(snapshot_every) == Some(0) {
@@ -421,6 +571,9 @@ pub fn train(
                 .clone()
                 .save_file(snapshot_path(snapshot_prefix, update))
                 .unwrap();
+            if pool_open {
+                pool.push(model.policy.to_plain());
+            }
         }
     }
 }

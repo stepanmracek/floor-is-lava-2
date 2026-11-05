@@ -41,8 +41,10 @@ enum Command {
         /// Print a log line every this many updates; 0 = never.
         #[arg(long, default_value_t = 20)]
         report_every: usize,
-        /// Save a policy snapshot every this many updates; 0 = never.
-        #[arg(long, default_value_t = 20)]
+        /// Save a policy snapshot every this many updates; 0 = never. Once the policy
+        /// beats the simple AI, every snapshot also joins the opponent pool, so 0 means
+        /// training against the simple AI only.
+        #[arg(long, default_value_t = 500)]
         snapshot_every: usize,
         /// Snapshots are saved as `<prefix>policy-<update>.bpk`.
         #[arg(long, default_value = "snapshots/actor-critic-")]

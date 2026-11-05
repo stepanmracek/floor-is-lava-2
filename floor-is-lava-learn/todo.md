@@ -205,36 +205,42 @@ corner situations.
   - Head-to-head, seed 42, both colour arrangements, 200 games each: against
     `flex/actor-critic-policy-04000` **62% / +15.8**, against
     `cpu/actor-critic-ec-policy3-04000` **53% / +1.3** (a draw).
-  - So REINFORCE pretraining isn't needed. `ai-hard` now embeds this policy; it joins
-    the opponent-pool candidates.
+  - So REINFORCE pretraining isn't needed. `ai-hard` embedded this policy until the
+    first pool run (step 2).
   - Untried: continuing from the 20 000 snapshot at lr 3e-4.
 - [x] **Re-export `ai-hard`;** `PolicyController` follows the new observation
   automatically through the shared crate.
   - Embedded `reinforce-ec-policy2-10000.safetensors` first, then
     `cpu/actor-critic-ec-policy3-04000.safetensors`, then
-    `flex/actor-critic-policy-04000.safetensors`, now
-    `flex/actor-critic-from-scratch-policy-20000.safetensors`. `PolicyController` picks the
-    encoding from the model's input size.
+    `flex/actor-critic-policy-04000.safetensors`, then
+    `flex/actor-critic-from-scratch-policy-20000.safetensors`, now
+    `flex/actor-critic-from-scratch-pool-policy-08000.safetensors` (step 2).
+    `PolicyController` picks the encoding from the model's input size.
 
 ## 2. Training against older snapshots
 
-**Order: opponent pool on the current actor-critic first, PPO only if needed.** The
-existing safeguards cover most of what PPO would provide at first:
+**Order: opponent pool on the current actor-critic first, PPO only if needed.** The plan
+was that the existing safeguards cover most of what PPO would provide at first:
 
 - KL logging shows immediately if updates get too large;
-- the learning rate is cautious (KL max < 0.001 in the `flex` actor-critic run);
+- the learning rate is cautious (KL max < 0.001 in the fine-tuned `flex` actor-critic
+  run);
 - the simple AI stays in the pool against forgetting.
 
-The pool starts with the simple AI and the egocentric snapshots, which play both
-colours: `cpu/` and `flex/` REINFORCE and actor-critic. Snapshots with the old
-(absolute) encoding no longer load.
+The first pool run showed the limits: it trained from scratch at a constant lr 1e-3
+(logged KL up to ~0.01), and the update that collapsed it fell between two report lines,
+so KL logging didn't show it. See *Guard against the policy collapse* below.
+
+The pool was planned to start with the simple AI and the egocentric `cpu/` and `flex/`
+snapshots; the first run used only the simple AI and its own snapshots (see the done
+item below). Snapshots with the old (absolute) encoding no longer load.
 
 **Tasks:**
 
 - [ ] **Benchmark opponents for the evaluation:** the simple AI plus frozen snapshots
   (egocentric). Evaluate every ~100–200 updates. Progress means rising numbers against all
   benchmarks; falling numbers against old ones mean forgetting, so roll back.
-- [ ] **Opponent pool, one opponent per episode:**
+- [x] **Opponent pool, one opponent per episode:**
   - ~50% recent snapshots, ~30% older snapshots, ~20% simple AI;
   - snapshot opponents sample their actions (deterministic opponents are exploitable
     in ways that don't generalize).
@@ -249,8 +255,60 @@ colours: `cpu/` and `flex/` REINFORCE and actor-critic. Snapshots with the old
     - snapshots are loaded into `Mlp` once, when the pool changes, not per
       episode. `PolicyController` owns its `Mlp`, so sharing one loaded snapshot
       between parallel episodes needs a small change, e.g. holding it in an `Arc`.
+
+  Done in `actor_critic.rs` only (`e498921`), differently from the plan:
+  - the pool holds only the simple AI and the run's own snapshots, not the older
+    `cpu/` and `flex/` ones;
+  - shares: empty pool → simple AI; one snapshot → 50% it, 50% simple AI; otherwise 50%
+    latest, 10% simple AI, 40% uniform over the older snapshots;
+  - snapshots join only once the margin against the simple AI over the last 10 updates is
+    positive (a one-time gate, like the critic warm-up); after that every
+    `--snapshot-every` snapshot joins;
+  - snapshot opponents borrow the shared `Mlp` and sample like `PolicyController`, so no
+    `Box<dyn Controller>` or `Arc` was needed.
+
+  First run, from scratch on `flex` (`snapshots/flex/actor-critic-from-scratch-pool-*`):
+  - Pool open at update 614. Margin against the simple AI flat at ~+55 (no-pool run:
+    +60–75 at the same updates), but much stronger head-to-head: `pool-policy-08000`
+    wins 83–90% (margin +37 to +47) against all earlier final snapshots, including the
+    no-pool `actor-critic-from-scratch-policy-20000` (83.0%, +39.5).
+  - Round robin of the pool snapshots 1000–8000: strictly ordered by age, every later
+    one beats every earlier one, so no cycling. Much of 8000's edge is against its own
+    earlier snapshots (+68–70 against 5000/6000 vs. +40 against outside ones).
+  - From ~4000 on, waiting standoffs: two copies on the same block wait for each other,
+    in sync. No-ops grew from ~20 to 400–800 per episode, entropy fell from ~0.6 to
+    0.07–0.10, explained variance to ~0.05.
+  - **Collapse at update ~9000:** the policy saturated on always Down (12 deaths per
+    episode, entropy 0.00, KL 0.0000, no recovery). Likely a single large update at the
+    constant lr 1e-3 on a near-saturated policy. Collapsed snapshots joined the pool too.
+    Log and snapshots are kept up to 8000.
+  - `pool-policy-08000` is now `ai-hard`. Details in `adr-actor_critic.md`, *Opponent
+    pool*.
+- [ ] **Guard against the policy collapse** seen in the first pool run (update ~9000,
+  saturated on always Down, no recovery):
+  - [ ] **KL guard on every update:** compute `approx_kl` after each update (plain-Rust
+    forward pass, cheap next to the rollouts), and discard the update if it is above a
+    threshold (e.g. 0.02), keeping the model from before the step. A basic trust region
+    without PPO.
+  - [ ] **Log the maximum KL over the report window,** not only the KL of the reported
+    update: the update that broke the policy fell between two report lines.
+  - [ ] **Check each snapshot before it joins the pool:** only if its margin against the
+    simple AI since the last report is still positive, so a broken policy doesn't take
+    over the 50% "latest" share.
+  - [ ] **Count no-ops per opponent group** in the log. If waiting is a standoff between
+    near-copies, no-ops against the simple AI stay low; if they are high there too, it's
+    a habit that doesn't depend on the opponent.
+  - [ ] **Watch entropy;** if it falls below ~0.2 again, raise `ENTROPY_COEF` to 0.02
+    (pushes towards the mixed strategy the chicken game calls for; not a strategy hint).
+  - [ ] **Restart from `flex/actor-critic-from-scratch-pool-policy-08000.bpk`,** the
+    last snapshot before the collapse: critic warm-up and `FINE_TUNE_LEARNING_RATE` 3e-4
+    with the ramp instead of the constant 1e-3.
+    - Open: reload the run's own snapshots 1000–8000 into the pool, or start with an
+      empty pool.
 - [ ] **PPO** (clipped probability ratio, several epochs per batch), if KL spikes or the
   evaluation shows forgetting.
+  - The first pool run collapsed; try the KL guard above first, PPO if it isn't
+    enough.
   - Limits how far one update moves the policy, the real fix for "too aggressive and it
     forgets".
   - Builds on what exists: critic, stored rollout log-probabilities, KL logging.

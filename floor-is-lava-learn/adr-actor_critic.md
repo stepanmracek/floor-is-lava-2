@@ -287,7 +287,95 @@ hand after the 20 000 snapshot. Parameters in
     noise (±~2.5);
   - for reference, `cpu/actor-critic-ec-policy3-04000` against
     `flex/actor-critic-policy-04000`: +19.2, 67% wins.
-- **Now embedded as `ai-hard`** (see `adr-policy-deployment.md`).
+- **Was embedded as `ai-hard`** until the opponent-pool run below replaced it (see
+  `adr-policy-deployment.md`).
+
+## Opponent pool
+
+Instead of the simple AI alone, each episode is played against one opponent drawn from
+a pool: the simple AI plus the run's own snapshots.
+
+- **Shares:** empty pool → simple AI; one snapshot → 50% it, 50% simple AI; otherwise
+  50% latest snapshot, 10% simple AI, 40% uniform over the older snapshots.
+  - Uniform rather than decaying weights: the oldest strategies are the ones that get
+    forgotten, and a decay turns the pool into a sliding window (fictitious self-play
+    is the uniform case).
+  - The simple AI keeps a fixed share as an anchor against forgetting.
+- **Gate:** snapshots join only once the margin against the simple AI over the last
+  `POOL_GATE_UPDATES` = 10 updates (320 games) is positive. Until then the pool is
+  empty, so all those games are against the simple AI. It's a one-time switch, like the
+  critic warm-up; afterwards every `--snapshot-every` snapshot joins (default 500,
+  `0` = no snapshots and no pool).
+- **Only the run's own snapshots,** not the older `cpu/` and `flex/` ones: the pool
+  grows from what this run learned.
+- **Snapshot opponents sample** like `PolicyController` (deterministic opponents are
+  exploitable in ways that don't generalize). They borrow the pool's `Mlp` instead of
+  owning a copy, so parallel episodes share one loaded snapshot.
+- **Seeds:** the opponent is drawn from a separate rng (seed + 2³²), so the game and
+  sampling seeds are the same as without the pool; the opponent samples from the
+  episode's `rng_seed` + 2³² (the same offset as the simple AI, only one of them plays).
+- **Log:** a second line per report, `pool N, margin vs <group> <games>: <margin>`,
+  per opponent group since the last report. With mixed opponents the first line's
+  scores no longer measure anything specific.
+
+### First run (`flex`, from scratch)
+
+Seed 42, constant learning rate 1e-3, `--snapshot-every 1000`. Parameters in
+`snapshots/flex/actor-critic-from-scratch-pool-params.txt`, log in
+`snapshots/flex/actor-critic-from-scratch-pool-log.txt` (cut after update 8000),
+final policy `snapshots/flex/actor-critic-from-scratch-pool-policy-08000.bpk`.
+Margins are per game against each opponent group; KL max is over the report lines
+(every 100 updates).
+
+| updates | vs simple AI | vs latest | vs older | deaths | no-ops | entropy | explained var | KL max |
+|---|---|---|---|---|---|---|---|---|
+| 1–1000 | −42.9 | – | – | 5.3 | 12 | 0.76 | 0.10 | 0.0101 |
+| 1001–2000 | +49.5 | +26.9 | – | 2.8 | 25 | 0.56 | 0.12 | 0.0105 |
+| 2001–3000 | +57.3 | +13.9 | +42.6 | 2.2 | 31 | 0.56 | 0.15 | 0.0093 |
+| 3001–4000 | +55.6 | +23.0 | +35.7 | 2.0 | 55 | 0.60 | 0.17 | 0.0053 |
+| 4001–5000 | +56.1 | +37.2 | +41.2 | 1.7 | 101 | 0.41 | 0.12 | 0.0061 |
+| 5001–6000 | +55.7 | +2.3 | +48.8 | 1.9 | 211 | 0.27 | 0.09 | 0.0025 |
+| 6001–7000 | +54.7 | +23.0 | +44.4 | 1.7 | 374 | 0.18 | 0.07 | 0.0014 |
+| 7001–8000 | +55.4 | +25.1 | +50.6 | 1.8 | 494 | 0.13 | 0.10 | 0.0071 |
+
+- **The gate opened at update 614.**
+- **The margin against the simple AI stays flat at ~+55,** below the no-pool run
+  (+65–84 at the same updates), but the policy is much stronger: `pool-policy-08000`
+  against the earlier final snapshots, seed 42, 200 games per colour arrangement:
+
+  | opponent | wins | margin |
+  |---|---|---|
+  | `flex/actor-critic-from-scratch-policy-20000` (no pool) | 83.0% | +39.5 |
+  | `flex/actor-critic-policy-04000` | 87.3% | +40.3 |
+  | `flex/reinforce-policy-10000` | 89.5% | +46.7 |
+  | `cpu/actor-critic-ec-policy3-04000` | 85.0% | +37.3 |
+  | `cpu/reinforce-ec-policy2-10000` | 85.0% | +38.2 |
+  | simple AI | 92.8% | +60.3 |
+
+  Again, a margin against one fixed opponent is a poor strength measure.
+- **No cycling:** in a round robin of the snapshots 1000–8000 (same setup), every later
+  snapshot beats every earlier one. The steps vary: 4000 → 5000 +55, 5000 → 6000 only
+  +9.6 (the stall in the "latest" column), 7000 → 8000 +54.5.
+- **Much of the progress is against its own lineage:** 8000 beats 5000 and 6000 by
+  +68 / +70, more than it beats the simple AI, but outside policies only by ~+40.
+  Against the no-pool 20000, 5000 already got +34.3, so 5000 → 8000 added little there.
+- **Waiting standoffs:** from ~4000 on, two near-copies on the same block wait for each
+  other, moving in sync (same egocentric input, near-deterministic policy). No-ops grew
+  from ~20 to ~500 per episode, entropy fell to ~0.1, explained variance to ~0.1. Half
+  the games are against the latest snapshot, a near-copy, which likely explains most of
+  it. Chicken has a mixed equilibrium; the policy plays a nearly pure one.
+- **Collapse at update ~9000:** between the report lines at 8900 and 9000 the policy
+  saturated on always Down: 12 deaths per episode, entropy 0.00, KL 0.0000 from 9100 on.
+  - Permanent: with p(Down) = 1 the policy gradient (∝ 1 − p) and the entropy gradient
+    vanish, and no other action is ever sampled.
+  - Likely cause: one large update at the constant lr 1e-3 on a policy already near
+    saturation (entropy ~0.1). Update 8900 already showed KL 0.0076 against ~0.0003
+    before.
+  - The collapsed snapshots joined the pool, so "latest" became a suicidal opponent.
+    The run was stopped at ~12 000; log and snapshots after 8000 were removed.
+  - Countermeasures (KL guard, pool admission check, entropy, restart from 8000) are in
+    `todo.md`, *Guard against the policy collapse*.
+- **Now embedded as `ai-hard`** (`pool-policy-08000`, see `adr-policy-deployment.md`).
 
 ## Usage
 
@@ -299,14 +387,15 @@ Defaults and details: `--help` and `practicalities.md`.
 
 ## Open issues / next steps
 
-- **Next: opponents other than the simple AI.** The roadmap and its order are in
-  `todo.md`:
-  - check how a red-trained snapshot plays as blue;
-  - randomize the agent's colour;
-  - save the critic with the snapshots;
-  - evaluation against fixed benchmarks;
-  - an opponent pool of frozen snapshots plus the simple AI;
-  - PPO if KL spikes or the evaluation shows forgetting.
+- **Next: make the pool run stable.** The roadmap and its order are in `todo.md`:
+  - guard against the collapse: KL guard on every update, pool admission check,
+    entropy; restart from `pool-policy-08000` at the fine-tuning learning rate;
+  - evaluation against fixed benchmarks during training;
+  - PPO if the KL guard isn't enough.
+
+  Done or dropped from the earlier list: playing blue and the random colour per episode
+  (egocentric observation, `todo.md` steps 0–1), the opponent pool (above); saving the
+  critic was dropped.
 - **Duplicated code:**
   - the rollout loop is duplicated between `reinforce.rs` and `actor_critic.rs`, a
     candidate for a shared function if both are kept;

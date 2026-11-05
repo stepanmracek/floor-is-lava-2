@@ -1,0 +1,161 @@
+update   100: my score   43.7, opponent  175.0, decisions     36, deaths      9, up    2, down    6, left   14, right    7, no-op    6, entropy 1.39, value loss 22.727, explained var 0.04, kl 0.0006, lr 1e-3
+             pool   0, margin vs simple AI 3200: -133.6
+update   200: my score   58.0, opponent  163.8, decisions     40, deaths      9, up    2, down    6, left    4, right   19, no-op    9, entropy 1.05, value loss 25.549, explained var 0.10, kl 0.0004, lr 1e-3
+             pool   0, margin vs simple AI 3200: -117.1
+update   300: my score   63.0, opponent  155.8, decisions     44, deaths      8, up    4, down    8, left   16, right    8, no-op    8, entropy 1.04, value loss 17.101, explained var 0.08, kl 0.0077, lr 1e-3
+             pool   0, margin vs simple AI 3200: -97.4
+update   400: my score   74.7, opponent  143.4, decisions     46, deaths      7, up    3, down    6, left   14, right   14, no-op    9, entropy 0.82, value loss 11.415, explained var 0.08, kl 0.0020, lr 1e-3
+             pool   0, margin vs simple AI 3200: -78.1
+update   500: my score   88.4, opponent  121.4, decisions     53, deaths      6, up    5, down    5, left   16, right   14, no-op   13, entropy 0.80, value loss 10.252, explained var 0.06, kl 0.0060, lr 1e-3
+             pool   0, margin vs simple AI 3200: -49.0
+update   600: my score  112.2, opponent  112.4, decisions     55, deaths      4, up    9, down    5, left   17, right   15, no-op    9, entropy 0.71, value loss 11.730, explained var 0.11, kl 0.0031, lr 1e-3
+             pool   0, margin vs simple AI 3200: -19.4
+update   614: opponent pool open
+update   700: my score  117.7, opponent  101.4, decisions     77, deaths      4, up    6, down    2, left   18, right   19, no-op   32, entropy 0.67, value loss 7.409, explained var 0.16, kl 0.0004, lr 1e-3
+             pool   0, margin vs simple AI 3200: +1.7
+update   800: my score  114.5, opponent  114.4, decisions     56, deaths      3, up   13, down    7, left   13, right   16, no-op    8, entropy 0.61, value loss 9.729, explained var 0.10, kl 0.0101, lr 1e-3
+             pool   0, margin vs simple AI 3200: +14.1
+update   900: my score  119.0, opponent  118.1, decisions     62, deaths      5, up    5, down    3, left   18, right   18, no-op   17, entropy 0.61, value loss 9.034, explained var 0.21, kl 0.0088, lr 1e-3
+             pool   0, margin vs simple AI 3200: +16.6
+update  1000: my score  123.7, opponent   94.9, decisions     68, deaths      3, up    9, down    3, left   18, right   19, no-op   19, entropy 0.63, value loss 8.211, explained var 0.13, kl 0.0067, lr 1e-3
+             pool   0, margin vs simple AI 3200: +33.7
+update  1100: my score  117.8, opponent  102.3, decisions     64, deaths      4, up   10, down    6, left   16, right   15, no-op   17, entropy 0.61, value loss 5.371, explained var 0.15, kl 0.0034, lr 1e-3
+             pool   1, margin vs simple AI 1544: +31.7, latest 1656: +7.1
+update  1200: my score  124.5, opponent   92.8, decisions     87, deaths      2, up   14, down    5, left   17, right   17, no-op   36, entropy 0.63, value loss 10.929, explained var 0.09, kl 0.0042, lr 1e-3
+             pool   1, margin vs simple AI 1592: +41.9, latest 1608: +15.4
+update  1300: my score  127.0, opponent   89.2, decisions     64, deaths      4, up    8, down    4, left   18, right   18, no-op   16, entropy 0.59, value loss 8.210, explained var 0.21, kl 0.0042, lr 1e-3
+             pool   1, margin vs simple AI 1574: +47.2, latest 1626: +20.9
+update  1400: my score  129.7, opponent   81.8, decisions     91, deaths      3, up   11, down    4, left   17, right   18, no-op   41, entropy 0.58, value loss 7.806, explained var 0.10, kl 0.0015, lr 1e-3
+             pool   1, margin vs simple AI 1595: +44.9, latest 1605: +26.3
+update  1500: my score  146.0, opponent   81.7, decisions     68, deaths      3, up    9, down    2, left   20, right   19, no-op   18, entropy 0.54, value loss 9.475, explained var 0.11, kl 0.0065, lr 1e-3
+             pool   1, margin vs simple AI 1594: +53.3, latest 1606: +29.4
+update  1600: my score  124.0, opponent   85.8, decisions     61, deaths      3, up   10, down    2, left   19, right   19, no-op   12, entropy 0.52, value loss 7.711, explained var 0.03, kl 0.0086, lr 1e-3
+             pool   1, margin vs simple AI 1634: +48.9, latest 1566: +30.5
+update  1700: my score  148.5, opponent   83.2, decisions     68, deaths      2, up   12, down    2, left   20, right   20, no-op   14, entropy 0.53, value loss 9.215, explained var 0.15, kl 0.0105, lr 1e-3
+             pool   1, margin vs simple AI 1576: +56.5, latest 1624: +37.6
+update  1800: my score  125.3, opponent   84.8, decisions     89, deaths      3, up    8, down    2, left   20, right   20, no-op   39, entropy 0.56, value loss 9.286, explained var 0.08, kl 0.0021, lr 1e-3
+             pool   1, margin vs simple AI 1637: +56.3, latest 1563: +33.4
+update  1900: my score  125.3, opponent   89.3, decisions     98, deaths      2, up   11, down    3, left   18, right   19, no-op   47, entropy 0.55, value loss 8.243, explained var 0.11, kl 0.0075, lr 1e-3
+             pool   1, margin vs simple AI 1571: +59.5, latest 1629: +37.4
+update  2000: my score  133.5, opponent   86.3, decisions     64, deaths      2, up   12, down    2, left   19, right   19, no-op   12, entropy 0.48, value loss 8.275, explained var 0.14, kl 0.0092, lr 1e-3
+             pool   1, margin vs simple AI 1605: +54.4, latest 1595: +32.2
+update  2100: my score  115.0, opponent  104.5, decisions     67, deaths      3, up    9, down    4, left   18, right   18, no-op   18, entropy 0.54, value loss 8.310, explained var 0.21, kl 0.0077, lr 1e-3
+             pool   2, margin vs simple AI 336: +58.2, latest 1607: +2.5, older 1257: +36.0
+update  2200: my score  110.8, opponent   95.1, decisions     77, deaths      1, up   13, down    3, left   21, right   17, no-op   23, entropy 0.52, value loss 6.684, explained var 0.12, kl 0.0056, lr 1e-3
+             pool   2, margin vs simple AI 335: +58.7, latest 1599: +10.6, older 1266: +43.0
+update  2300: my score  112.8, opponent   85.9, decisions     86, deaths      3, up    9, down    2, left   20, right   19, no-op   36, entropy 0.56, value loss 5.852, explained var 0.13, kl 0.0046, lr 1e-3
+             pool   2, margin vs simple AI 323: +49.3, latest 1577: +6.9, older 1300: +37.0
+update  2400: my score  112.5, opponent   89.4, decisions     93, deaths      3, up    9, down    2, left   18, right   21, no-op   43, entropy 0.54, value loss 8.376, explained var 0.13, kl 0.0005, lr 1e-3
+             pool   2, margin vs simple AI 309: +53.7, latest 1626: +14.0, older 1265: +40.9
+update  2500: my score  113.4, opponent   83.5, decisions     82, deaths      2, up   10, down    3, left   17, right   20, no-op   31, entropy 0.59, value loss 9.029, explained var 0.15, kl 0.0026, lr 1e-3
+             pool   2, margin vs simple AI 292: +55.4, latest 1602: +11.0, older 1306: +39.1
+update  2600: my score  119.9, opponent   83.3, decisions     77, deaths      2, up   12, down    3, left   19, right   18, no-op   24, entropy 0.58, value loss 8.199, explained var 0.13, kl 0.0093, lr 1e-3
+             pool   2, margin vs simple AI 322: +62.1, latest 1614: +13.4, older 1264: +45.1
+update  2700: my score  122.0, opponent   77.6, decisions     83, deaths      2, up   12, down    2, left   18, right   20, no-op   30, entropy 0.57, value loss 6.255, explained var 0.09, kl 0.0015, lr 1e-3
+             pool   2, margin vs simple AI 314: +56.3, latest 1581: +18.6, older 1305: +43.4
+update  2800: my score  122.0, opponent   82.7, decisions     90, deaths      2, up   11, down    1, left   20, right   21, no-op   37, entropy 0.54, value loss 8.045, explained var 0.20, kl 0.0072, lr 1e-3
+             pool   2, margin vs simple AI 333: +57.8, latest 1581: +21.3, older 1286: +47.3
+update  2900: my score  119.3, opponent   80.8, decisions     82, deaths      2, up   10, down    2, left   20, right   19, no-op   31, entropy 0.56, value loss 9.560, explained var 0.17, kl 0.0016, lr 1e-3
+             pool   2, margin vs simple AI 321: +64.1, latest 1541: +22.1, older 1338: +50.0
+update  3000: my score  124.1, opponent   84.7, decisions     87, deaths      2, up   12, down    2, left   18, right   20, no-op   35, entropy 0.63, value loss 6.582, explained var 0.14, kl 0.0023, lr 1e-3
+             pool   2, margin vs simple AI 284: +56.7, latest 1644: +18.4, older 1272: +43.7
+update  3100: my score  111.2, opponent   86.9, decisions    117, deaths      2, up   11, down    3, left   17, right   19, no-op   66, entropy 0.62, value loss 8.720, explained var 0.23, kl 0.0010, lr 1e-3
+             pool   3, margin vs simple AI 337: +50.2, latest 1589: +14.3, older 1274: +33.7
+update  3200: my score  111.8, opponent   79.7, decisions    105, deaths      2, up   12, down    2, left   20, right   18, no-op   52, entropy 0.61, value loss 9.004, explained var 0.17, kl 0.0008, lr 1e-3
+             pool   3, margin vs simple AI 292: +56.3, latest 1632: +19.8, older 1276: +34.1
+update  3300: my score  115.6, opponent   82.8, decisions    106, deaths      2, up   10, down    3, left   19, right   18, no-op   56, entropy 0.66, value loss 8.008, explained var 0.14, kl 0.0020, lr 1e-3
+             pool   3, margin vs simple AI 316: +54.5, latest 1611: +16.4, older 1273: +33.0
+update  3400: my score  117.6, opponent   78.7, decisions    118, deaths      2, up   11, down    2, left   19, right   20, no-op   67, entropy 0.59, value loss 7.140, explained var 0.15, kl 0.0019, lr 1e-3
+             pool   3, margin vs simple AI 339: +55.3, latest 1617: +23.0, older 1244: +35.6
+update  3500: my score  109.7, opponent   86.2, decisions    109, deaths      2, up   10, down    2, left   19, right   20, no-op   57, entropy 0.59, value loss 7.222, explained var 0.20, kl 0.0005, lr 1e-3
+             pool   3, margin vs simple AI 334: +58.8, latest 1598: +24.9, older 1268: +35.4
+update  3600: my score  111.2, opponent   79.8, decisions    113, deaths      2, up   13, down    3, left   20, right   18, no-op   60, entropy 0.63, value loss 7.190, explained var 0.19, kl 0.0051, lr 1e-3
+             pool   3, margin vs simple AI 317: +60.1, latest 1587: +23.0, older 1296: +32.6
+update  3700: my score  112.6, opponent   84.4, decisions     97, deaths      2, up   12, down    2, left   20, right   18, no-op   44, entropy 0.60, value loss 8.162, explained var 0.13, kl 0.0053, lr 1e-3
+             pool   3, margin vs simple AI 327: +54.7, latest 1629: +22.9, older 1244: +38.2
+update  3800: my score  120.8, opponent   79.4, decisions    113, deaths      2, up   11, down    3, left   18, right   19, no-op   61, entropy 0.57, value loss 5.766, explained var 0.17, kl 0.0020, lr 1e-3
+             pool   3, margin vs simple AI 365: +54.9, latest 1613: +28.2, older 1222: +36.5
+update  3900: my score  101.8, opponent   72.8, decisions     98, deaths      2, up   12, down    3, left   19, right   18, no-op   45, entropy 0.56, value loss 5.838, explained var 0.13, kl 0.0046, lr 1e-3
+             pool   3, margin vs simple AI 328: +54.3, latest 1654: +29.3, older 1218: +38.5
+update  4000: my score  108.4, opponent   75.9, decisions     94, deaths      2, up   13, down    2, left   19, right   18, no-op   40, entropy 0.59, value loss 8.476, explained var 0.15, kl 0.0017, lr 1e-3
+             pool   3, margin vs simple AI 328: +57.1, latest 1592: +27.6, older 1280: +39.4
+update  4100: my score  111.8, opponent   79.5, decisions    132, deaths      2, up   11, down    3, left   19, right   18, no-op   81, entropy 0.49, value loss 7.524, explained var 0.08, kl 0.0024, lr 1e-3
+             pool   4, margin vs simple AI 335: +56.3, latest 1622: +25.4, older 1243: +36.1
+update  4200: my score  110.1, opponent   74.9, decisions    157, deaths      3, up   10, down    3, left   18, right   18, no-op  108, entropy 0.37, value loss 9.443, explained var 0.07, kl 0.0002, lr 1e-3
+             pool   4, margin vs simple AI 322: +58.6, latest 1646: +31.5, older 1232: +39.2
+update  4300: my score  115.1, opponent   67.4, decisions    111, deaths      2, up   12, down    2, left   19, right   19, no-op   58, entropy 0.50, value loss 5.412, explained var 0.09, kl 0.0017, lr 1e-3
+             pool   4, margin vs simple AI 310: +57.2, latest 1598: +33.6, older 1292: +39.1
+update  4400: my score  110.5, opponent   69.6, decisions    204, deaths      2, up   13, down    3, left   17, right   18, no-op  152, entropy 0.35, value loss 4.451, explained var 0.10, kl 0.0006, lr 1e-3
+             pool   4, margin vs simple AI 334: +55.3, latest 1598: +38.1, older 1268: +38.9
+update  4500: my score  118.0, opponent   62.2, decisions    143, deaths      2, up   11, down    2, left   19, right   19, no-op   92, entropy 0.46, value loss 7.332, explained var 0.18, kl 0.0014, lr 1e-3
+             pool   4, margin vs simple AI 326: +52.8, latest 1628: +39.8, older 1246: +45.0
+update  4600: my score  117.4, opponent   68.6, decisions    134, deaths      1, up   13, down    2, left   19, right   19, no-op   81, entropy 0.46, value loss 7.546, explained var 0.11, kl 0.0043, lr 1e-3
+             pool   4, margin vs simple AI 304: +59.2, latest 1571: +41.0, older 1325: +46.3
+update  4700: my score  115.2, opponent   68.9, decisions    134, deaths      1, up   13, down    2, left   20, right   18, no-op   81, entropy 0.41, value loss 5.424, explained var 0.20, kl 0.0061, lr 1e-3
+             pool   4, margin vs simple AI 347: +57.1, latest 1618: +43.5, older 1235: +45.0
+update  4800: my score  120.0, opponent   77.8, decisions    184, deaths      1, up   12, down    2, left   20, right   19, no-op  131, entropy 0.34, value loss 6.362, explained var 0.17, kl 0.0045, lr 1e-3
+             pool   4, margin vs simple AI 289: +59.0, latest 1648: +42.9, older 1263: +43.1
+update  4900: my score  111.9, opponent   69.8, decisions    132, deaths      2, up   12, down    3, left   18, right   18, no-op   80, entropy 0.38, value loss 4.887, explained var 0.09, kl 0.0042, lr 1e-3
+             pool   4, margin vs simple AI 397: +51.2, latest 1564: +34.6, older 1239: +37.5
+update  5000: my score  115.4, opponent   65.7, decisions    197, deaths      1, up   13, down    2, left   19, right   18, no-op  145, entropy 0.35, value loss 6.323, explained var 0.09, kl 0.0004, lr 1e-3
+             pool   4, margin vs simple AI 323: +56.0, latest 1683: +41.6, older 1194: +42.0
+update  5100: my score   96.8, opponent   93.1, decisions    213, deaths      2, up   13, down    3, left   17, right   18, no-op  161, entropy 0.29, value loss 6.911, explained var 0.11, kl 0.0008, lr 1e-3
+             pool   5, margin vs simple AI 332: +54.7, latest 1595: -10.5, older 1273: +48.2
+update  5200: my score  104.8, opponent   81.9, decisions    198, deaths      2, up   11, down    2, left   17, right   19, no-op  148, entropy 0.29, value loss 8.294, explained var 0.08, kl 0.0015, lr 1e-3
+             pool   5, margin vs simple AI 303: +46.5, latest 1595: -3.4, older 1302: +43.0
+update  5300: my score   97.9, opponent   81.3, decisions    338, deaths      2, up   10, down    2, left   17, right   18, no-op  291, entropy 0.23, value loss 5.247, explained var 0.05, kl 0.0005, lr 1e-3
+             pool   5, margin vs simple AI 302: +57.1, latest 1620: +0.1, older 1278: +46.1
+update  5400: my score  108.8, opponent   86.0, decisions    211, deaths      1, up   13, down    2, left   18, right   19, no-op  159, entropy 0.31, value loss 9.094, explained var 0.08, kl 0.0002, lr 1e-3
+             pool   5, margin vs simple AI 317: +61.3, latest 1618: -6.3, older 1265: +50.0
+update  5500: my score  107.6, opponent   74.6, decisions    307, deaths      2, up   10, down    3, left   16, right   18, no-op  259, entropy 0.25, value loss 5.012, explained var 0.06, kl 0.0003, lr 1e-3
+             pool   5, margin vs simple AI 316: +56.2, latest 1573: +4.9, older 1311: +50.1
+update  5600: my score  109.0, opponent   75.3, decisions    261, deaths      2, up   12, down    3, left   17, right   18, no-op  211, entropy 0.28, value loss 4.375, explained var 0.14, kl 0.0007, lr 1e-3
+             pool   5, margin vs simple AI 328: +60.2, latest 1640: -1.0, older 1232: +47.9
+update  5700: my score  106.2, opponent   75.9, decisions    331, deaths      2, up   12, down    2, left   17, right   17, no-op  282, entropy 0.23, value loss 4.821, explained var 0.08, kl 0.0003, lr 1e-3
+             pool   5, margin vs simple AI 341: +55.4, latest 1607: +11.3, older 1252: +50.8
+update  5800: my score  109.8, opponent   80.8, decisions    221, deaths      2, up   12, down    3, left   19, right   17, no-op  170, entropy 0.29, value loss 6.405, explained var 0.18, kl 0.0008, lr 1e-3
+             pool   5, margin vs simple AI 299: +52.1, latest 1627: +16.2, older 1274: +51.2
+update  5900: my score  101.2, opponent   81.2, decisions    231, deaths      2, up   12, down    2, left   18, right   19, no-op  181, entropy 0.31, value loss 5.906, explained var 0.10, kl 0.0025, lr 1e-3
+             pool   5, margin vs simple AI 333: +57.2, latest 1546: +11.3, older 1321: +52.1
+update  6000: my score  103.4, opponent   84.8, decisions    299, deaths      2, up   12, down    2, left   18, right   18, no-op  249, entropy 0.26, value loss 6.870, explained var 0.04, kl 0.0007, lr 1e-3
+             pool   5, margin vs simple AI 314: +55.5, latest 1632: +0.6, older 1254: +48.6
+update  6100: my score  116.2, opponent   64.2, decisions    531, deaths      1, up   13, down    2, left   16, right   16, no-op  484, entropy 0.16, value loss 4.295, explained var 0.04, kl 0.0002, lr 1e-3
+             pool   6, margin vs simple AI 325: +57.8, latest 1644: +8.0, older 1231: +40.6
+update  6200: my score  116.9, opponent   69.0, decisions    356, deaths      1, up   13, down    2, left   17, right   18, no-op  307, entropy 0.21, value loss 5.115, explained var 0.08, kl 0.0001, lr 1e-3
+             pool   6, margin vs simple AI 333: +60.4, latest 1585: +13.1, older 1282: +42.7
+update  6300: my score  111.3, opponent   69.9, decisions    496, deaths      2, up   11, down    2, left   16, right   16, no-op  450, entropy 0.16, value loss 6.212, explained var 0.10, kl 0.0005, lr 1e-3
+             pool   6, margin vs simple AI 316: +50.5, latest 1552: +23.5, older 1332: +41.0
+update  6400: my score  112.5, opponent   81.1, decisions    305, deaths      2, up   12, down    2, left   18, right   17, no-op  256, entropy 0.20, value loss 7.263, explained var 0.07, kl 0.0007, lr 1e-3
+             pool   6, margin vs simple AI 306: +59.6, latest 1595: +19.1, older 1299: +45.2
+update  6500: my score  109.0, opponent   69.0, decisions    358, deaths      2, up   13, down    3, left   16, right   17, no-op  309, entropy 0.19, value loss 4.781, explained var 0.12, kl 0.0014, lr 1e-3
+             pool   6, margin vs simple AI 293: +55.3, latest 1655: +16.9, older 1252: +46.8
+update  6600: my score  115.2, opponent   73.2, decisions    458, deaths      2, up   12, down    3, left   16, right   15, no-op  412, entropy 0.17, value loss 5.005, explained var 0.02, kl 0.0002, lr 1e-3
+             pool   6, margin vs simple AI 321: +52.8, latest 1577: +32.1, older 1302: +44.9
+update  6700: my score  108.5, opponent   69.7, decisions    468, deaths      2, up   11, down    3, left   17, right   15, no-op  423, entropy 0.14, value loss 4.276, explained var 0.04, kl 0.0001, lr 1e-3
+             pool   6, margin vs simple AI 363: +51.8, latest 1551: +24.1, older 1286: +43.4
+update  6800: my score  110.9, opponent   63.9, decisions    511, deaths      1, up   13, down    2, left   16, right   16, no-op  464, entropy 0.15, value loss 4.296, explained var 0.07, kl 0.0003, lr 1e-3
+             pool   6, margin vs simple AI 343: +51.1, latest 1564: +17.2, older 1293: +43.6
+update  6900: my score  115.3, opponent   70.5, decisions    411, deaths      2, up   12, down    2, left   17, right   17, no-op  363, entropy 0.17, value loss 3.788, explained var 0.05, kl 0.0008, lr 1e-3
+             pool   6, margin vs simple AI 343: +56.2, latest 1603: +43.5, older 1254: +51.5
+update  7000: my score  118.0, opponent   69.9, decisions    324, deaths      2, up   12, down    2, left   18, right   18, no-op  275, entropy 0.21, value loss 3.971, explained var 0.10, kl 0.0006, lr 1e-3
+             pool   6, margin vs simple AI 308: +51.9, latest 1581: +33.5, older 1311: +44.5
+update  7100: my score  109.9, opponent   65.0, decisions    595, deaths      1, up   13, down    2, left   15, right   15, no-op  549, entropy 0.12, value loss 5.431, explained var 0.08, kl 0.0006, lr 1e-3
+             pool   7, margin vs simple AI 288: +57.0, latest 1619: +31.0, older 1293: +52.5
+update  7200: my score  110.2, opponent   65.5, decisions    682, deaths      2, up   12, down    2, left   14, right   14, no-op  639, entropy 0.10, value loss 4.926, explained var 0.14, kl 0.0004, lr 1e-3
+             pool   7, margin vs simple AI 313: +54.1, latest 1622: +23.1, older 1265: +52.7
+update  7300: my score  112.4, opponent   64.8, decisions    660, deaths      2, up   11, down    2, left   15, right   15, no-op  617, entropy 0.11, value loss 9.211, explained var -0.01, kl 0.0007, lr 1e-3
+             pool   7, margin vs simple AI 346: +54.7, latest 1633: +38.5, older 1221: +56.3
+update  7400: my score  109.2, opponent   83.2, decisions    298, deaths      1, up   13, down    2, left   18, right   18, no-op  246, entropy 0.21, value loss 8.775, explained var 0.14, kl 0.0006, lr 1e-3
+             pool   7, margin vs simple AI 346: +51.0, latest 1609: +22.8, older 1245: +51.1
+update  7500: my score  104.0, opponent   61.3, decisions    618, deaths      2, up   12, down    2, left   15, right   15, no-op  573, entropy 0.10, value loss 5.417, explained var 0.08, kl 0.0015, lr 1e-3
+             pool   7, margin vs simple AI 317: +55.4, latest 1659: +16.2, older 1224: +43.5
+update  7600: my score  102.4, opponent   85.3, decisions    422, deaths      3, up   10, down    3, left   15, right   17, no-op  378, entropy 0.14, value loss 4.769, explained var 0.05, kl 0.0007, lr 1e-3
+             pool   7, margin vs simple AI 332: +64.3, latest 1626: +6.7, older 1242: +47.5
+update  7700: my score  104.6, opponent   95.0, decisions    258, deaths      2, up   13, down    3, left   19, right   15, no-op  208, entropy 0.19, value loss 5.786, explained var 0.20, kl 0.0071, lr 1e-3
+             pool   7, margin vs simple AI 318: +55.1, latest 1593: +14.1, older 1289: +43.1
+update  7800: my score  106.8, opponent   68.3, decisions    677, deaths      2, up   11, down    2, left   15, right   14, no-op  635, entropy 0.10, value loss 7.372, explained var 0.13, kl 0.0002, lr 1e-3
+             pool   7, margin vs simple AI 330: +56.5, latest 1545: +32.2, older 1325: +52.6
+update  7900: my score  124.9, opponent   57.3, decisions    623, deaths      1, up   13, down    2, left   15, right   14, no-op  578, entropy 0.10, value loss 6.827, explained var 0.03, kl 0.0001, lr 1e-3
+             pool   7, margin vs simple AI 305: +50.7, latest 1612: +34.7, older 1283: +52.4
+update  8000: my score  122.8, opponent   58.0, decisions    564, deaths      2, up   12, down    2, left   15, right   16, no-op  519, entropy 0.09, value loss 6.616, explained var 0.16, kl 0.0004, lr 1e-3
+             pool   7, margin vs simple AI 306: +55.4, latest 1602: +31.9, older 1292: +53.9
