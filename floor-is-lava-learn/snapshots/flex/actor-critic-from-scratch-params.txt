@@ -1,0 +1,25 @@
+UPDATES = 22300 (stopped by hand after the 20000 snapshot, plateaued; configured 50000)
+SEED = 42
+BACKEND = flex (BURN_DEVICE=flex, burn 0.22.1)
+CODE = 608a24e (no code changes since 85f4a91)
+REPORT_EVERY = 100
+SNAPSHOT_EVERY = 10000
+SNAPSHOT_PREFIX = snapshots/flex/actor-critic-from-scratch-
+PLAY_AS = Both
+OBSERVATION = egocentric (floor_is_lava_policy::observation)
+SIMPLE_AI = random, colour-symmetric tie-breaks (since 231ac99)
+INITIAL_POLICY = none (random initialisation)
+FINAL_POLICY = snapshots/flex/actor-critic-from-scratch-policy-20000.bpk
+CRITIC = separate network, 455 -> 128 -> ReLU -> 128 -> ReLU -> 1
+EPISODE_SECONDS = 60.0
+DT = 1.0 / 60.0
+GAMMA_PER_SECOND = 0.99
+ENTROPY_COEF = 0.01
+VALUE_COEF = 0.5
+REWARD_SCALE = 10.0
+EPISODES_PER_UPDATE = 32
+LEARNING_RATE = 1e-3 (constant for the whole run)
+FINE_TUNE_LEARNING_RATE = not used (no initial policy)
+LEARNING_RATE_RAMP_UPDATES = not used (no initial policy)
+WARMUP_UPDATES = 0 (no initial policy, so no critic warm-up)
+CRITIC_STEPS = 10

@@ -245,6 +245,50 @@ Final policy: `snapshots/cpu/actor-critic-policy2.bpk`.
   them. `ai-hard` no longer embeds `actor-critic-policy2`. The logs and params files
   stay as the record of these runs.
 
+### From scratch (`flex`)
+
+22 300 updates from a random policy on the `flex` backend, egocentric observation, the
+simple AI with random tie-breaks. A fresh policy means no warm-up and a constant
+learning rate of 1e-3 (see *Critic warm-up* and *Fine-tuning learning rate*). Stopped by
+hand after the 20 000 snapshot. Parameters in
+`snapshots/flex/actor-critic-from-scratch-params.txt`, log in
+`snapshots/flex/actor-critic-from-scratch-log.txt`, final policy
+`snapshots/flex/actor-critic-from-scratch-policy-20000.bpk`. The log has a line every
+100 updates, so the KL max is over those lines only.
+
+| updates | margin (my − opp) | deaths | Up | no-ops | entropy | explained var | KL max |
+|---|---|---|---|---|---|---|---|
+| 1–1000 | −38 | 6.20 | 6.3 | 12 | 0.90 | 0.11 | 0.0076 |
+| 1001–2000 | +47 | 2.90 | 9.2 | 22 | 0.62 | 0.17 | 0.0073 |
+| 2001–4000 | +65 | 1.95 | 11.6 | 25 | 0.56 | 0.18 | 0.0111 |
+| 6001–8000 | +84 | 1.40 | 12.6 | 15 | 0.52 | 0.20 | 0.0086 |
+| 10001–12000 | +90 | 1.10 | 12.8 | 18 | 0.51 | 0.20 | 0.0047 |
+| 14001–16000 | +89 | 1.20 | 12.8 | 17 | 0.50 | 0.19 | 0.0050 |
+| 18001–20000 | +95 | 1.20 | 12.9 | 18 | 0.50 | 0.23 | 0.0060 |
+| 20001–22300 | **+100** | **1.00** | 13.3 | 16 | 0.47 | 0.23 | 0.0153 |
+
+- **No REINFORCE start is needed.** Parity at update ~700, the `flex` REINFORCE plateau
+  (+78) by ~5000, and the same behaviour as the actor-critic fine-tuned from REINFORCE:
+  ~70 decisions per episode, up ≈ 13, down ≈ 2, left ≈ right ≈ 20, no-ops ≈ 15.
+  REINFORCE's many no-ops (~55) are never learned, so they aren't needed for good play.
+- **Early near-collapse without warm-up.** At update 100 entropy was 0.87 (uniform:
+  ln 5 ≈ 1.61) with 18 of 31 decisions going left; it recovered to 1.44 by update 200.
+  The actor trained against an untrained critic. Harmless here, but a risk for other
+  seeds.
+- **Slow end:** after ~6000 updates the margin rose only ~+3 per 2000 updates, mostly
+  from fewer deaths. Entropy, action mix and explained variance (~0.2) stayed flat.
+  The KL was still higher than in the fine-tuned runs, so a lower learning rate late in
+  the run (e.g. 3e-4 from the 20 000 snapshot) is untried.
+- **Head-to-head** (`floor-is-lava-headless`, seed 42, 200 games per colour arrangement,
+  margins averaged over both):
+  - against `flex/actor-critic-policy-04000`: **+15.8, 62% wins**, although both reach
+    ~+97 against the simple AI;
+  - against `cpu/actor-critic-ec-policy3-04000`: **+1.3, 53% wins**, a draw within
+    noise (±~2.5);
+  - for reference, `cpu/actor-critic-ec-policy3-04000` against
+    `flex/actor-critic-policy-04000`: +19.2, 67% wins.
+- **Now embedded as `ai-hard`** (see `adr-policy-deployment.md`).
+
 ## Usage
 
 ```

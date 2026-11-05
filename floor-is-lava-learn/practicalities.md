@@ -69,7 +69,7 @@ Facts about the tools and the training runs that cost time to find out.
 - **`snapshots/` is created relative to the working directory.** Existing runs are in
   `floor-is-lava-learn/snapshots/`, one subdirectory per burn backend: `cpu/` (all runs
   up to the egocentric actor-critic) and `flex/` (from the switch to `flex` on, e.g.
-  `--snapshot-prefix snapshots/flex/reinforce-`; `actor-critic-policy-04000` is `ai-hard`).
+  `--snapshot-prefix snapshots/flex/reinforce-`; `actor-critic-from-scratch-policy-20000` is `ai-hard`).
 - **Snapshots:**
   - `<prefix>policy-{update:05}.bpk`, saved every `--snapshot-every` updates (default 20;
     the log line is printed every `--report-every`, default 20; 0 = never, e.g.

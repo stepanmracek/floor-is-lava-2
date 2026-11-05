@@ -195,13 +195,25 @@ corner situations.
     - Likely cause: each was trained against a different simple AI (fixed vs random
       tie-breaks). A margin against one opponent is a poor strength measure, which
       supports the opponent pool and the benchmark opponents (step 2).
-  - `ai-hard` now embeds the `flex` actor-critic, trained against the current simple
+  - `ai-hard` then embedded the `flex` actor-critic, trained against the current simple
     AI. Both actor-critics are candidates for the opponent pool.
+- [x] **Actor-critic from scratch on `flex`** (no REINFORCE start, constant lr 1e-3),
+  22 300 updates, final `flex/actor-critic-from-scratch-policy-20000.bpk`; details in
+  `adr-actor_critic.md`, *From scratch*.
+  - Training margin +65 by update 4000, **+95–100** at the end, still creeping up
+    (~+3 per 2000 updates); deaths 1.0.
+  - Head-to-head, seed 42, both colour arrangements, 200 games each: against
+    `flex/actor-critic-policy-04000` **62% / +15.8**, against
+    `cpu/actor-critic-ec-policy3-04000` **53% / +1.3** (a draw).
+  - So REINFORCE pretraining isn't needed. `ai-hard` now embeds this policy; it joins
+    the opponent-pool candidates.
+  - Untried: continuing from the 20 000 snapshot at lr 3e-4.
 - [x] **Re-export `ai-hard`;** `PolicyController` follows the new observation
   automatically through the shared crate.
   - Embedded `reinforce-ec-policy2-10000.safetensors` first, then
-    `cpu/actor-critic-ec-policy3-04000.safetensors`, now
-    `flex/actor-critic-policy-04000.safetensors`. `PolicyController` picks the
+    `cpu/actor-critic-ec-policy3-04000.safetensors`, then
+    `flex/actor-critic-policy-04000.safetensors`, now
+    `flex/actor-critic-from-scratch-policy-20000.safetensors`. `PolicyController` picks the
     encoding from the model's input size.
 
 ## 2. Training against older snapshots
