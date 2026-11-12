@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use floor_is_lava_lib::{Clock, Player, PlayerColor, PlayerState};
 use glam::vec3;
 use kiss3d::prelude::*;
@@ -15,15 +13,15 @@ pub struct PlayerView {
     current_animation: usize,
 }
 
+const SCENE_GLB: &[u8] = include_bytes!("../assets/models/megarex/scene.glb");
+const RED_TEXTURE: &[u8] = include_bytes!("../assets/models/megarex/red.png");
+const BLUE_TEXTURE: &[u8] = include_bytes!("../assets/models/megarex/blue.png");
+
 impl PlayerView {
     pub fn new(world_node: &mut SceneNode3d, player: &Player) -> Self {
         let model_offset_x = match player.color {
             PlayerColor::Red => -0.15,
             PlayerColor::Blue => 0.15,
-        };
-        let model_texture = match player.color {
-            PlayerColor::Red => "red",
-            PlayerColor::Blue => "blue",
         };
 
         let mut node = world_node.add_group();
@@ -34,10 +32,18 @@ impl PlayerView {
             _ => panic!(),
         }
 
-        let mut model = node.add_gltf(
-            Path::new(&format!("assets/models/megarex/{model_texture}.gltf")),
-            Vec3::ONE / 8.0,
+        let mut model = node.add_gltf_from_memory(SCENE_GLB, Vec3::ONE / 8.0);
+        model.root.set_texture_from_memory_recursive(
+            match player.color {
+                PlayerColor::Red => RED_TEXTURE,
+                PlayerColor::Blue => BLUE_TEXTURE,
+            },
+            match player.color {
+                PlayerColor::Red => "red_texture",
+                PlayerColor::Blue => "blue_texture",
+            },
         );
+
         model.root.set_position(vec3(model_offset_x, 0.0, 0.0));
         let current_animation = PlayerView::state_to_animation(&player.state);
         model.player.play_index(current_animation);

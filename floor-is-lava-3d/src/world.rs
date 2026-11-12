@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 use floor_is_lava_lib::{Block, BlockId, Clock, Game, GameEvent};
 use glam::vec3;
@@ -41,7 +41,7 @@ impl WorldView {
         let lava_node = world_node
             .add_cube(12.0, 0.1, 12.0)
             .set_position(y_to_3d(game.lava_height))
-            .set_texture_from_file(Path::new("assets/textures/lava.png"), "lava");
+            .set_texture_from_memory(include_bytes!("../assets/textures/lava.png"), "lava");
 
         WorldView {
             world_node,
