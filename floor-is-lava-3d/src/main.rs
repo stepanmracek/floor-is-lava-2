@@ -11,6 +11,7 @@ use glam::vec2;
 use kiss3d::prelude::*;
 
 use crate::{
+    constants::GAME_DURATION,
     controller::{KeyboardController, KeyboardState},
     world::WorldView,
 };
@@ -46,44 +47,72 @@ async fn main() {
     };
 
     let mut blue_ctrl = KeyboardController::arrows(&keyboard_state);
+    let mut started = false;
 
     while window
         .render_3d(&mut world.world_node, &mut world.camera)
         .await
     {
-        clock.tick();
-        keyboard_state.borrow_mut().update(&window);
+        if !started {
+            let any_key_pressed = window
+                .events()
+                .iter()
+                .any(|event| matches!(event.value, WindowEvent::Key(_, Action::Press, _)));
+            if any_key_pressed {
+                started = true;
+                // Restart the clock
+                clock = Clock::realtime();
+            }
+        }
 
-        let events = game.step(
-            &clock,
-            red_ctrl.get_action(game.cells()),
-            blue_ctrl.get_action(game.cells()),
-        );
+        let time_left = (GAME_DURATION - clock.game_time).max(0.0);
 
-        world.update(&events, &game, &clock);
+        // Before the start and after the time runs out, the game is frozen.
+        if started && time_left > 0.0 {
+            clock.tick();
+            keyboard_state.borrow_mut().update(&window);
 
-        let fps = 1.0 / clock.dt;
-        window.draw_text(
-            &format!("{fps:.0}FPS"),
-            vec2(5.0, window.height() as f32 - 20.0),
-            15.0,
-            &font,
-            WHITE,
-        );
+            let events = game.step(
+                &clock,
+                red_ctrl.get_action(game.cells()),
+                blue_ctrl.get_action(game.cells()),
+            );
 
-        window.draw_text(
-            &format!("{}", game.red_player.score),
-            vec2(20.0, 20.0),
-            30.0,
-            &font,
-            RED,
-        );
-        window.draw_text(
-            &format!("{}", game.blue_player.score),
-            vec2(window.width() as f32 - 60.0, 20.0),
-            30.0,
-            &font,
-            BLUE,
-        );
+            world.update(&events, &game, &clock);
+        }
+
+        if started {
+            // Remaining time: a thin white strip along the top edge
+            let scale = window.scale_factor() as f32;
+            let half_w = window.width() as f32 / scale / 2.0;
+            let half_h = window.height() as f32 / scale / 2.0;
+            let bar_half_w = half_w * time_left / GAME_DURATION;
+            let bar_y = half_h - 4.0;
+            if bar_half_w > 0.0 {
+                let a = vec2(-bar_half_w, bar_y);
+                let b = vec2(bar_half_w, bar_y);
+                window.draw_line_2d(a, b, WHITE, 4.0);
+            }
+
+            let fps = 1.0 / clock.dt;
+            let pos = vec2(5.0, window.height() as f32 - 20.0);
+            window.draw_text(&format!("{fps:.0}FPS"), pos, 15.0, &font, WHITE);
+        }
+
+        let pos = vec2(20.0, 20.0);
+        let score = &format!("{}", game.red_player.score);
+        window.draw_text(score, pos, 30.0, &font, RED);
+
+        let pos = vec2(window.width() as f32 - 60.0, 20.0);
+        let score = &format!("{}", game.blue_player.score);
+        window.draw_text(score, pos, 30.0, &font, BLUE);
+
+        if !started {
+            let pos = vec2(
+                window.width() as f32 / 2.0 - 200.0,
+                window.height() as f32 / 2.0 - 20.0,
+            );
+            window.draw_text("Press any key to start", pos, 40.0, &font, WHITE);
+        }
     }
 }
