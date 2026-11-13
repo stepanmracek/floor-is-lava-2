@@ -16,8 +16,26 @@ use crate::{
     world::WorldView,
 };
 
+/// The red controller choice: the first command-line argument natively, the URL query
+/// string (e.g. `index.html?ai-hard`) on the web.
+fn controller_arg() -> Option<String> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::env::args().nth(1)
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let search = web_sys::window()?.location().search().ok()?;
+        let arg = search.trim_start_matches('?');
+        (!arg.is_empty()).then(|| arg.to_string())
+    }
+}
+
 #[kiss3d::main]
 async fn main() {
+    #[cfg(target_arch = "wasm32")]
+    console_error_panic_hook::set_once();
+
     let mut clock = Clock::realtime();
     let mut game = Game::new();
 
@@ -26,7 +44,7 @@ async fn main() {
     let mut world = WorldView::from_game(&game);
     let keyboard_state = Rc::new(RefCell::new(KeyboardState::default()));
 
-    let arg = std::env::args().nth(1);
+    let arg = controller_arg();
 
     const HARD_AI_POLICY: &[u8] = include_bytes!(
         "../../floor-is-lava-learn/snapshots/flex/actor-critic-from-scratch-pool-policy-08000.safetensors"
