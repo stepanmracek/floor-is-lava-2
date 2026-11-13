@@ -1,6 +1,6 @@
 use glam::{IVec2, ivec2};
 use rand::{RngExt, SeedableRng, rngs::StdRng, seq::IteratorRandom};
-use std::time::Instant;
+use web_time::Instant;
 
 pub const LAVA_SPEED: f32 = 1.0 / 4.0;
 pub const VISIBLE_ROWS: usize = 4;

@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 glam = { workspace = true }
 rand = "0.10.3"
+web-time = "1"

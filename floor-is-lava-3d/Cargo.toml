@@ -8,3 +8,7 @@ floor-is-lava-lib = { path = "../floor-is-lava-lib" }
 floor-is-lava-policy = { path = "../floor-is-lava-policy" }
 glam = { workspace = true }
 kiss3d = "0.47.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["Window", "Location"] }
+console_error_panic_hook = "0.1"
