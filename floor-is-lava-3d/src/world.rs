@@ -5,7 +5,7 @@ use glam::vec3;
 use kiss3d::prelude::*;
 
 use crate::{
-    constants::{CAMERA_OFFSET, LIGHT_OFFSET},
+    constants::{BLOCK_SCALE, CAMERA_OFFSET, LIGHT_OFFSET},
     player::PlayerView,
     resources::init_resources,
     utils::{ivec2_to_3d, y_to_3d},
@@ -98,10 +98,11 @@ impl WorldView {
 
     fn spawn_block(block: &Block, world_node: &mut SceneNode3d) -> SceneNode3d {
         let texture_name = WorldView::block_texture_name(block);
+        let offset = vec3(0.0, -BLOCK_SCALE * 0.5, 0.0);
         world_node
-            .add_geom_with_name("block_cube", Vec3::splat(0.8))
+            .add_geom_with_name("block_cube", Vec3::splat(BLOCK_SCALE))
             .expect("block_cube mesh not registered")
-            .set_position(ivec2_to_3d(block.position))
+            .set_position(ivec2_to_3d(block.position) + offset)
             .set_texture_with_name(&texture_name)
     }
 }

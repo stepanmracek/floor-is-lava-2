@@ -21,8 +21,6 @@ async fn main() {
     let mut game = Game::new();
 
     let mut window = Window::new("Floor is lava!").await;
-    window.set_shadows_enabled(false);
-
     let font = Font::default();
     let mut world = WorldView::from_game(&game);
     let keyboard_state = Rc::new(RefCell::new(KeyboardState::default()));
