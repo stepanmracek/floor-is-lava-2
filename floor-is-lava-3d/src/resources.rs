@@ -66,5 +66,6 @@ pub fn init_resources() {
         for (name, bytes) in BLOCK_TEXTURES {
             texture_mngr.add_image_from_memory(bytes, name);
         }
+        texture_mngr.add_image_from_memory(include_bytes!("../assets/textures/lava.jpg"), "lava");
     });
 }
