@@ -217,7 +217,7 @@ impl Game {
     fn with_rng(rng: StdRng) -> Self {
         let mut game = Self {
             blocks: vec![],
-            lava_height: -2.0,
+            lava_height: -1.9,
             blue_player: Player {
                 score: 0,
                 color: PlayerColor::Blue,
@@ -237,15 +237,15 @@ impl Game {
             rng,
         };
 
-        for x in -3..=3 {
-            game.spawn_block(ivec2(x, 0));
-        }
+        let mut max_height = -1;
+        let mut events = vec![];
+        while game.spawn_row(&mut max_height, &mut events) {}
 
         game.update_cells(0.0);
         game
     }
 
-    pub fn spawn_block(&mut self, position: IVec2) -> BlockId {
+    fn spawn_block(&mut self, position: IVec2) -> BlockId {
         let id = self.next_block_id;
         self.next_block_id = id.next();
         let points = self.rng.random_range(1..=9);
@@ -256,6 +256,22 @@ impl Game {
             color: BlockColor::Neutral,
         });
         id
+    }
+
+    fn spawn_row(&mut self, max_height: &mut i32, events: &mut Vec<GameEvent>) -> bool {
+        if (*max_height as f32) - self.lava_height < (VISIBLE_ROWS - 1) as f32 {
+            let y = *max_height + 1;
+            let guaranteed_x = (-3..=3).choose(&mut self.rng).unwrap();
+            for x in -3..=3 {
+                if y == 0 || x == guaranteed_x || self.rng.random::<f32>() < 0.7 {
+                    let new_block_id = self.spawn_block(ivec2(x, y));
+                    events.push(GameEvent::BlockSpawned(new_block_id));
+                }
+            }
+            *max_height = y;
+            return true;
+        }
+        false
     }
 
     pub fn is_standing_on_block(blocks: &mut [Block], player_pos: IVec2) -> Option<&mut Block> {
@@ -372,16 +388,7 @@ impl Game {
             }
         });
 
-        if (max_height as f32) - self.lava_height < (VISIBLE_ROWS - 1) as f32 {
-            let y = max_height + 1;
-            let guaranteed_x = (-3..=3).choose(&mut self.rng).unwrap();
-            for x in -3..=3 {
-                if x == guaranteed_x || self.rng.random::<f32>() < 0.7 {
-                    let new_block_id = self.spawn_block(ivec2(x, y));
-                    events.push(GameEvent::BlockSpawned(new_block_id));
-                }
-            }
-        }
+        self.spawn_row(&mut max_height, &mut events);
 
         let mut players: [&mut Player; 2] = [&mut self.blue_player, &mut self.red_player];
         if self.rng.random::<bool>() {
