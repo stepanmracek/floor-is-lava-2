@@ -1,4 +1,6 @@
-use kiss3d::resource::{MeshManager3d, TextureManager};
+use std::{cell::OnceCell, sync::Arc};
+
+use kiss3d::resource::{MeshManager3d, Texture, TextureManager};
 
 const STONE_CUBE_GLB: &[u8] = include_bytes!("../assets/models/stone_cube.glb");
 
@@ -33,17 +35,30 @@ const BLOCK_TEXTURES: &[(&str, &[u8])] = &[
     ("block-9-red",  include_bytes!("../assets/textures/block-9-red.png")),
 ];
 
+thread_local! {
+    static BLOCK_NORMAL_MAP: OnceCell<Arc<Texture>> = const { OnceCell::new() };
+}
+
+pub fn block_normal_map() -> Arc<Texture> {
+    BLOCK_NORMAL_MAP.with(|c| c.get().expect("init_resources not called").clone())
+}
+
 pub fn init_resources() {
     if MeshManager3d::get_global_manager(|mm| mm.get("block_cube").is_none()) {
         let model = kiss3d::loader::gltf::load_from_slice(STONE_CUBE_GLB).expect("not valid glTF");
         let gltf_node = model.root.data().children()[0].clone();
         let object_node = gltf_node.data().children()[0].clone();
-        let mesh = object_node
+        let object_data = object_node.data();
+        let object = object_data.object().expect("object has has no mesh");
+        let mesh = object.mesh().clone();
+        let normal_map = object
             .data()
-            .object()
-            .expect("object has has no mesh")
-            .mesh()
+            .normal_map()
+            .expect("object has no normal map")
             .clone();
+        BLOCK_NORMAL_MAP.with(|c| {
+            let _ = c.set(normal_map);
+        });
         MeshManager3d::get_global_manager(|mm| mm.add(mesh.clone(), "block_cube"));
     }
 

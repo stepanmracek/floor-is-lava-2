@@ -7,7 +7,7 @@ use kiss3d::prelude::*;
 use crate::{
     constants::{BLOCK_SCALE, CAMERA_OFFSET, LIGHT_OFFSET},
     player::PlayerView,
-    resources::init_resources,
+    resources::{block_normal_map, init_resources},
     utils::{ivec2_to_3d, y_to_3d},
 };
 
@@ -104,6 +104,8 @@ impl WorldView {
             .expect("block_cube mesh not registered")
             .set_position(ivec2_to_3d(block.position) + offset)
             .set_texture_with_name(&texture_name)
+            .set_normal_map(block_normal_map())
+            .set_roughness(0.7)
     }
 }
 
